@@ -2,7 +2,7 @@
 locale: "en-US"
 title: "Eli Tsung"
 name: "Eli Tsung"
-description: "Personal site for photography, research, and writing."
+description: "personal site."
 url: ""
 baseurl: ""
 repository: ""
@@ -79,7 +79,7 @@ navigation:
 author:
   name: "Eli Tsung"
   avatar: ""
-  bio: "Economics predoc and casual photographer."
+  bio: ""
   location: "California"
   links:
     - label: "GitHub"
