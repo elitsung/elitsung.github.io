@@ -1,6 +1,7 @@
 ---
 layout: default
 title: photos
+banner_image: /assets/banner.jpg
 ---
 
 <h2>photos</h2>
