@@ -1,9 +1,0 @@
-main:
-  - title: "Home"
-    url: "/"
-  - title: "Blog"
-    url: "/posts/"
-  - title: "Photos"
-    url: "/photos/"
-  - title: "Research"
-    url: "/research/"

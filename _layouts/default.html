@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ page.title }}{% if page.title %} · {% endif %}{{ site.title }}</title>
+  <style>
+    body { font-family: "Times New Roman", Times, serif; max-width: 720px; margin: 2rem auto; line-height: 1.6; }
+    a { color: blue; text-decoration: underline; }
+    nav ul { list-style: disc; padding-left: 1.25rem; }
+    header h1 { margin-bottom: 0.5rem; font-weight: normal; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><a href="/">{{ site.title }}</a></h1>
+    <nav>
+      <ul>
+        {% for item in site.data.nav %}
+        <li><a href="{{ item.url }}">{{ item.title }}</a></li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </header>
+  <main>
+    {{ content }}
+  </main>
+</body>
+</html>
