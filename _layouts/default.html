@@ -19,18 +19,30 @@
     img { max-width: 100%; height: auto; }
     figure { margin: 0 0 2rem 0; }
     figcaption { font-size: 0.9em; opacity: 0.7; }
+    .nav-inline {
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      letter-spacing: 0.3px;
+    }
+    .nav-inline a {
+      text-decoration: none;
+      color: inherit;
+    }
+    .nav-inline a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1><a href="/">{{ site.title }}</a></h1>
-    <nav>
-      <ul>
-        {% for item in site.data.nav %}
-        <li><a href="{{ item.url }}">{{ item.title }}</a></li>
-        {% endfor %}
-      </ul>
-    </nav>
+  <nav class="nav-inline">
+    {% for item in site.data.nav %}
+      <a href="{{ item.url }}">{{ item.title }}</a>
+      {% unless forloop.last %} ✱ {% endunless %}
+    {% endfor %}
+  </nav>
   </header>
 
   {% if page.banner_image %}
@@ -41,7 +53,7 @@
     {% endif %}
   </div>
   {% endif %}
-  
+
   <main>
     {{ content }}
   </main>
