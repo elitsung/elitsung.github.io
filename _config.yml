@@ -19,6 +19,7 @@ paginate_path: /page:num/
 # Plugins
 plugins:
   - jekyll-remote-theme
+  - jekyll-paginate
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-include-cache
