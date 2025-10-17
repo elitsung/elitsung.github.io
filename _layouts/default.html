@@ -5,6 +5,12 @@
   <title>{{ page.title }}{% if page.title %} · {% endif %}{{ site.title }}</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(2deg); }
+      50% { transform: rotate(-2deg); }
+      75% { transform: rotate(1deg); }
+    }
     body { 
       font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       max-width: 900px;
@@ -31,10 +37,6 @@
       font-style: normal;
       transition: font-style 0.1s ease;
     }
-    header h1 a:hover {
-      font-style: italic;
-      text-decoration: underline;
-    }
     img { 
       max-width: 100%; 
       height: auto; 
@@ -56,11 +58,13 @@
     .nav-inline a {
       text-decoration: underline;
       color: blue;
-      transition: font-style 0.1s ease;
     }
+    header h1 a:hover,
     .nav-inline a:hover {
-      text-decoration: none;
+      display: inline-block;
       font-style: italic;
+      text-decoration: underline;
+      animation: wiggle 0.3s ease-in-out infinite;
     }
   </style>
 </head>
