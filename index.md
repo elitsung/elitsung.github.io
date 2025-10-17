@@ -3,4 +3,6 @@ layout: default
 title: home
 ---
 
-welcome to my website.
+carbondale, il.
+yale alumnus.
+*currently:* economics predoc at uc berkeley.
