@@ -4,8 +4,6 @@ title: photos
 banner_image: /assets/banner.jpg
 ---
 
-<h2>photos</h2>
-
 <div class="thumbs">
   {% assign imgs = site.static_files | where_exp: "f", "f.path contains '/assets/photos/'" %}
   {% if imgs.size == 0 %}
