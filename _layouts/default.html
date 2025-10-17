@@ -32,6 +32,16 @@
       </ul>
     </nav>
   </header>
+
+  {% if page.banner_image %}
+  <div class="banner-image">
+    <img src="{{ page.banner_image }}" alt="">
+    {% if page.banner_text %}
+      <div class="banner-text">{{ page.banner_text }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+  
   <main>
     {{ content }}
   </main>
