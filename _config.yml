@@ -1,43 +1,99 @@
+# Site Settings
+locale: "en-US"
 title: "Eli Tsung"
-author: "Eli Tsung"
-description: "personal website." # This will show up in places like twitter, linkedin, etc, if you share your sites url as a post.
+name: "Eli Tsung"
+description: "Personal site for photography, research, and writing."
+url: ""
+baseurl: ""
+repository: ""
 
-# Email / Social media user names used by the minima theme:
-# All of these are optional and can be removed or commented out
-# email: "example@mail.com"
-# twitter_username: "twitteruser"
-#github_username: "githubuser"
-# linkedin_username: "linkedinuser"
-#facebook_username: username
-#flickr_username: username
-#instagram_username: username
-#pinterest_username: username
-#youtube_username: username
-#googleplus_username: +username
+# Theme Settings
+remote_theme: "mmistakes/minimal-mistakes@4.24.0"
+minimal_mistakes_skin: "default"
 
-#########################################################################################
-######### Nothing below needs to be changed (unless you know what you're doing) #########
-#########################################################################################
+# Outputting
+permalink: /:categories/:title/
+paginate: 5
+paginate_path: /page:num/
 
-rss: rss
-
-kramdown:
-  syntax_highlighter_opts:
-    disable: true
-
-remote_theme: pages-themes/minimal@v0.2.0
+# Plugins
 plugins:
-  - jekyll-remote-theme
   - jekyll-feed
   - jekyll-sitemap
+  - jekyll-include-cache
 
-titles_from_headings:
-  strip_title: true
-  collections: true
+# Collections
+collections:
+  posts:
+    output: true
+    permalink: /posts/:title/
+  photos:
+    output: true
+    permalink: /photos/:path/
+  research:
+    output: true
+    permalink: /research/:path/
 
+# Defaults
 defaults:
   - scope:
       path: ""
-      type: post
+      type: posts
     values:
-      tags: Other
+      layout: single
+      author_profile: true
+      read_time: true
+      share: true
+      related: true
+  - scope:
+      path: ""
+      type: photos
+    values:
+      layout: single
+      author_profile: false
+  - scope:
+      path: ""
+      type: research
+    values:
+      layout: single
+      author_profile: true
+      toc: true
+  - scope:
+      path: ""
+    values:
+      layout: single
+      author_profile: true
+
+# Navigation
+navigation:
+  - title: "Home"
+    url: "/"
+  - title: "Blog"
+    url: "/posts/"
+  - title: "Photos"
+    url: "/photos/"
+  - title: "Research"
+    url: "/research/"
+
+# Author profile
+author:
+  name: "Eli Tsung"
+  avatar: ""
+  bio: "Economics predoc and casual photographer."
+  location: "California"
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/elitsung"
+
+# Footer settings
+footer:
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/elitsung"
+
+# Sass
+sass:
+  sass_dir: _sass
+  style: compressed
