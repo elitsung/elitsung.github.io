@@ -31,20 +31,12 @@
       color: blue;
     }
     .nav-inline a:hover {
-      text-decoration: italic;
+      text-decoration: none;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1><a href="/">{{ site.title }}</a></h1>
-  <nav class="nav-inline">
-    {% for item in site.data.nav %}
-      <a href="{{ item.url }}">{{ item.title }}</a>
-      {% unless forloop.last %} ✱ {% endunless %}
-    {% endfor %}
-  </nav>
-  </header>
 
   {% if page.banner_image %}
   <div class="banner-image">
@@ -54,6 +46,16 @@
     {% endif %}
   </div>
   {% endif %}
+
+  <header>
+    <h1><a href="/">{{ site.title }}</a></h1>
+  <nav class="nav-inline">
+    {% for item in site.data.nav %}
+      <a href="{{ item.url }}">{{ item.title }}</a>
+      {% unless forloop.last %} ✱ {% endunless %}
+    {% endfor %}
+  </nav>
+  </header>
 
   <main>
     {{ content }}
