@@ -1,6 +1,15 @@
+---
+layout: single
+title: "Blog Post Title From First Header"
+author_profile: true
+read_time: true
+share: true
+excerpt: "Sample blog post demonstrating code snippets and headings."
+---
+
 ## Blog Post Title From First Header
 
-Due to a plugin called `jekyll-titles-from-headings` which is supported by GitHub Pages by default. The above header (in the markdown file) will be automatically used as the pages title.
+Due to a plugin called `jekyll-titles-from-headings` which is supported by GitHub Pages by default. The above header (in the markdown file) will be automatically used as the page's title.
 
 If the file does not start with a header, then the post title will be derived from the filename.
 
