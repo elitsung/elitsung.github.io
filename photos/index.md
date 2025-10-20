@@ -18,7 +18,7 @@ banner_image: /assets/banner.jpg
 <div id="photo-viewer" style="text-align:center">
   <div id="photo-title" style="margin-bottom:.4rem;font-weight:500;"></div>
   <a id="photo-link" href="#" target="_blank" rel="noopener">
-    <img id="photo-img" src="" alt="" style="max-width:100%;height:auto;">
+    <img id="photo-img" src="" alt="" loading="lazy" decoding="async" style="max-width:66%;height:auto;">
   </a>
   <figcaption id="photo-caption" style="margin-top:.4rem;opacity:.75;"></figcaption>
 
@@ -79,8 +79,11 @@ banner_image: /assets/banner.jpg
     const it = items[idx];
     img.src = it.src;
     link.href = it.src;
-    title.textContent = it.date ? fmt(it.date) : '';
-    cap.textContent = it.name;
+    let dateText = it.date ? fmt(it.date) : '';
+    cap.innerHTML = `
+      <div class="photo-date">${dateText}</div>
+      <div class="photo-name">${it.name}</div>
+    `;
     const url = new URL(location.href);
     url.searchParams.set('i', idx);
     history.replaceState(null, '', url);
