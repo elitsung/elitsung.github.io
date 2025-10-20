@@ -55,26 +55,40 @@
       margin: 1.5rem auto 2rem auto;
       width: 100%;
     }
-    /* inline, click-to-open tree; keeps your minimalist/blue look */
-    .nav-inline { text-align:center; margin-top:.5rem; font-size:1rem; letter-spacing:.3px; color:blue; }
-    .nav-inline a { color:blue; text-decoration:underline; font-style:normal; transition:font-style .1s ease; }
-    .nav-inline a:hover { text-decoration:none; font-style:italic; }
-
-    /* details/summary styling */
-    .nav-inline details { display:inline-block; position:relative; }
-    .nav-inline details > summary { list-style:none; display:inline; cursor:pointer; }
-    .nav-inline details > summary::-webkit-details-marker { display:none; } /* hide default triangle */
-
-    /* subtree block that drops below the item when open */
-    .nav-inline details[open] > ul {
-      margin:.4rem 0 .6rem 2rem; /* indent */
-      padding-left:.75rem;
-      border-left:1px solid rgba(0,0,0,.15); /* “tree” line */
-      text-align:left; /* read like a tree under the centered bar */
-      color:blue;      /* separators/links stay blue */
+    /* LEFT align the bar */
+    .nav-inline{
+      text-align:left;              /* was center */
+      margin-top:.5rem;
+      font-size:1rem;
+      letter-spacing:.3px;
+      color:blue;
     }
-    .nav-inline ul { margin:0; padding:0; }
-    .nav-inline li { list-style:none; margin:.25rem 0; }
+
+    /* Links + hover */
+    .nav-inline a{ color:blue; text-decoration:underline; font-style:normal; transition:font-style .1s ease; }
+    .nav-inline a:hover{ text-decoration:none; font-style:italic; }
+
+    /* Separator */
+    .nav-inline .sep{ color:blue; margin:0 .35rem; }
+
+    /* TREE BEHAVIOR */
+    .nav-inline details{ display:inline; position:relative; }           /* inline on the top line */
+    .nav-inline details > summary{ list-style:none; display:inline; cursor:pointer; }
+    .nav-inline details > summary::-webkit-details-marker{ display:none; }
+
+    /* When a tree is OPEN, move the whole details block to its own line so the subtree drops DOWN */
+    .nav-inline details[open]{ display:block; margin-top:.35rem; }
+
+    /* Subtree block (downward) */
+    .nav-inline details[open] > ul{
+      margin:.25rem 0 .6rem 1.25rem;   /* indent */
+      padding-left:.75rem;
+      border-left:1px solid rgba(0,0,0,.15);  /* the vertical “tree” line */
+      text-align:left;
+      color:blue;
+    }
+    .nav-inline ul{ margin:0; padding:0; }
+    .nav-inline li{ list-style:none; margin:.25rem 0; }
   </style>
 </head>
 <body>
@@ -92,8 +106,8 @@
     <h1><a href="/">{{ site.title }}</a></h1>
     <nav class="nav-inline">
       {% for item in site.data.nav %}
-        {% include tree_item.html item=item %}
-        {% unless forloop.last %} ✱ {% endunless %}
+        <span class="nav-item">{% include tree_item.html item=item %}</span>
+        {% unless forloop.last %}<span class="sep"> ✱ </span>{% endunless %}
       {% endfor %}
     </nav>
   </header>
