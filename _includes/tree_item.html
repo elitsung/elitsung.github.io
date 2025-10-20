@@ -1,12 +1,5 @@
 {% if include.item.children %}
-  <details class="tree">
-    <summary><a href="{{ include.item.url }}">{{ include.item.title }}</a></summary>
-    <ul>
-      {% for child in include.item.children %}
-        <li>{% include tree_item.html item=child %}</li>
-      {% endfor %}
-    </ul>
-  </details>
+  <a href="{{ include.item.url }}" class="nav-root" data-children="{{ include.item.title | downcase }}">{{ include.item.title }}</a>
 {% else %}
   <a href="{{ include.item.url }}">{{ include.item.title }}</a>
 {% endif %}

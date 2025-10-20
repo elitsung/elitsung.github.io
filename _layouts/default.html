@@ -89,6 +89,22 @@
     }
     .nav-inline ul{ margin:0; padding:0; }
     .nav-inline li{ list-style:none; margin:.25rem 0; }
+    #nav-tree-container {
+      margin-top: .75rem;
+      margin-left: 1.25rem;
+    }
+    .subtree {
+      padding-left: 1rem;
+      border-left: 1px solid rgba(0,0,0,.15);
+    }
+    .subtree a {
+      color: blue;
+      text-decoration: underline;
+    }
+    .subtree a:hover {
+      font-style: italic;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -110,6 +126,7 @@
         {% unless forloop.last %}<span class="sep"> ✱ </span>{% endunless %}
       {% endfor %}
     </nav>
+    <div id="nav-tree-container"></div>
   </header>
   <hr class="page-divider">
   <main>
@@ -117,13 +134,33 @@
   </main>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.nav-inline details > summary > a').forEach(a => {
-    a.addEventListener('click', (e) => {
-      // normal click toggles; modifier-clicks (cmd/ctrl/shift/alt) still navigate
-      if (!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1)) {
-        e.preventDefault();
-        const d = a.closest('details');
-        d.open = !d.open;
+  const treeContainer = document.getElementById('nav-tree-container');
+  const navItems = document.querySelectorAll('.nav-root');
+
+  const navData = {{ site.data.nav | jsonify }};
+
+  function buildTree(children) {
+    return `
+      <ul class="subtree">
+        ${children.map(child => `
+          <li>
+            <a href="${child.url}">${child.title}</a>
+            ${child.children ? buildTree(child.children) : ''}
+          </li>
+        `).join('')}
+      </ul>
+    `;
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const title = item.getAttribute('data-children');
+      const node = navData.find(n => n.title.toLowerCase() === title);
+      if (node && node.children) {
+        treeContainer.innerHTML = buildTree(node.children);
+      } else {
+        treeContainer.innerHTML = '';
       }
     });
   });
