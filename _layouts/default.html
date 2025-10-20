@@ -55,56 +55,35 @@
       margin: 1.5rem auto 2rem auto;
       width: 100%;
     }
-    /* LEFT align the bar */
-    .nav-inline{
-      text-align:left;              /* was center */
-      margin-top:.5rem;
-      font-size:1rem;
-      letter-spacing:.3px;
-      color:blue;
-    }
+    /* top bar stays inline & left-aligned */
+    .nav-inline { text-align:left; color:blue; font-size:1rem; letter-spacing:.3px; }
+    .sep { color:blue; margin:0 .35rem; }
 
-    /* Links + hover */
-    .nav-inline a{ color:blue; text-decoration:underline; font-style:normal; transition:font-style .1s ease; }
-    .nav-inline a:hover{ text-decoration:none; font-style:italic; }
+    /* links */
+    .nav-link { color:blue; text-decoration:underline; font-style:normal; transition:font-style .1s ease; }
+    .nav-link:hover { text-decoration:none; font-style:italic; }
 
-    /* Separator */
-    .nav-inline .sep{ color:blue; margin:0 .35rem; }
+    /* parent is inline, subtree drops under it */
+    .nav-parent { position:relative; display:inline-block; }
 
-    /* TREE BEHAVIOR */
-    .nav-inline details{ display:inline; position:relative; }           /* inline on the top line */
-    .nav-inline details > summary{ list-style:none; display:inline; cursor:pointer; }
-    .nav-inline details > summary::-webkit-details-marker{ display:none; }
-
-    /* When a tree is OPEN, move the whole details block to its own line so the subtree drops DOWN */
-    .nav-inline details[open]{ display:block; margin-top:.35rem; }
-
-    /* Subtree block (downward) */
-    .nav-inline details[open] > ul{
-      margin:.25rem 0 .6rem 1.25rem;   /* indent */
+    /* panel under the word (centered under it) */
+    .nav-parent .nav-tree {
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      margin-top:.4rem;
       padding-left:.75rem;
-      border-left:1px solid rgba(0,0,0,.15);  /* the vertical “tree” line */
+      border-left:1px solid rgba(0,0,0,.18);   /* the vertical tree line */
       text-align:left;
-      color:blue;
+      background:transparent;
     }
-    .nav-inline ul{ margin:0; padding:0; }
-    .nav-inline li{ list-style:none; margin:.25rem 0; }
-    #nav-tree-container {
-      margin-top: .75rem;
-      margin-left: 1.25rem;
-    }
-    .subtree {
-      padding-left: 1rem;
-      border-left: 1px solid rgba(0,0,0,.15);
-    }
-    .subtree a {
-      color: blue;
-      text-decoration: underline;
-    }
-    .subtree a:hover {
-      font-style: italic;
-      text-decoration: none;
-    }
+
+    /* no bullets */
+    .nav-parent .nav-tree ul { margin:0; padding:0; list-style:none; }
+    .nav-parent .nav-tree li { margin:.25rem 0; }
+
+    /* optional: tiny indent for deeper levels */
+    .nav-parent .nav-tree .nav-parent .nav-tree { margin-left:1rem; }
   </style>
 </head>
 <body>
@@ -122,7 +101,7 @@
     <h1><a href="/">{{ site.title }}</a></h1>
     <nav class="nav-inline">
       {% for item in site.data.nav %}
-        <span class="nav-item">{% include tree_item.html item=item %}</span>
+        {% include tree_item.html item=item %}
         {% unless forloop.last %}<span class="sep"> ✱ </span>{% endunless %}
       {% endfor %}
     </nav>
@@ -134,35 +113,26 @@
   </main>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const treeContainer = document.getElementById('nav-tree-container');
-  const navItems = document.querySelectorAll('.nav-root');
-
-  const navData = {{ site.data.nav | jsonify }};
-
-  function buildTree(children) {
-    return `
-      <ul class="subtree">
-        ${children.map(child => `
-          <li>
-            <a href="${child.url}">${child.title}</a>
-            ${child.children ? buildTree(child.children) : ''}
-          </li>
-        `).join('')}
-      </ul>
-    `;
-  }
-
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const title = item.getAttribute('data-children');
-      const node = navData.find(n => n.title.toLowerCase() === title);
-      if (node && node.children) {
-        treeContainer.innerHTML = buildTree(node.children);
-      } else {
-        treeContainer.innerHTML = '';
-      }
+  const parents = document.querySelectorAll('.nav-parent > .has-children');
+  function closeAll(except) {
+    document.querySelectorAll('.nav-parent .nav-tree').forEach(t => {
+      if (t !== except) t.hidden = true;
     });
+  }
+  parents.forEach(a => {
+    a.addEventListener('click', (e) => {
+      // regular click toggles; modifier-click still navigates
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return;
+      e.preventDefault();
+      const tree = a.nextElementSibling;
+      const willOpen = tree.hidden;
+      closeAll(tree);
+      tree.hidden = !willOpen ? true : false;
+    });
+  });
+  // click outside closes
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.nav-inline')) closeAll(null);
   });
 });
 </script>
