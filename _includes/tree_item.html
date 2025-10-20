@@ -1,5 +1,0 @@
-{% if include.item.children %}
-  <a href="{{ include.item.url }}" class="nav-root" data-children="{{ include.item.title | downcase }}">{{ include.item.title }}</a>
-{% else %}
-  <a href="{{ include.item.url }}">{{ include.item.title }}</a>
-{% endif %}

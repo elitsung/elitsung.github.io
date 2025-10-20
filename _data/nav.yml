@@ -4,8 +4,3 @@
   url: /photos
 - title: projects
   url: /projects
-  children:
-    - title: project 1
-      url: /projects/project-1
-    - title: project 2
-      url: /projects/project-2
