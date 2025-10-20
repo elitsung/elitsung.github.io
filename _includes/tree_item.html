@@ -1,0 +1,12 @@
+{% if include.item.children %}
+  <details class="tree">
+    <summary><a href="{{ include.item.url }}">{{ include.item.title }}</a></summary>
+    <ul>
+      {% for child in include.item.children %}
+        <li>{% include tree_item.html item=child %}</li>
+      {% endfor %}
+    </ul>
+  </details>
+{% else %}
+  <a href="{{ include.item.url }}">{{ include.item.title }}</a>
+{% endif %}
