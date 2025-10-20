@@ -66,6 +66,12 @@
       text-decoration: underline;
       animation: wiggle 0.3s ease-in-out infinite;
     }
+    .page-divider {
+      border: none;
+      border-top: 1px solid rgba(0, 0, 0, 0.15);
+      margin: 1.5rem auto 2rem auto;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -88,7 +94,7 @@
     {% endfor %}
   </nav>
   </header>
-
+  <hr class="page-divider">
   <main>
     {{ content }}
   </main>
