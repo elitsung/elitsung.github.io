@@ -7,9 +7,9 @@ banner_image: /assets/banner.jpg
 <!-- 1) Emit the list of photo files from Jekyll -->
 <script>
   const PHOTO_FILES = [
-  {% assign imgs = site.static_files | where_exp: "f", "f.path contains '/assets/photos/'" %}
+  {% assign imgs = site.static_files | where_exp: "f", "f.path contains 'assets/photos/'" %}
   {% for f in imgs %}
-    { src: "{{ f.path }}", name: "{{ f.name | escape }}" }{% unless forloop.last %},{% endunless %}
+    { src: "{{ f.path | relative_url }}", name: "{{ f.name | escape }}" }{% unless forloop.last %},{% endunless %}
   {% endfor %}
   ];
 </script>
@@ -75,9 +75,17 @@ banner_image: /assets/banner.jpg
   const cap = document.getElementById('photo-caption');
 
   function render() {
-    if (!items.length) return;
+    if (!items.length) {
+      title.textContent = '';
+      img.removeAttribute('src');
+      img.alt = '';
+      link.removeAttribute('href');
+      cap.innerHTML = '<em>No photos found.</em>';
+      return;
+    }
     const it = items[idx];
     img.src = it.src;
+    img.alt = it.name;
     link.href = it.src;
     let dateText = it.date ? fmt(it.date) : '';
     cap.innerHTML = `
@@ -89,8 +97,16 @@ banner_image: /assets/banner.jpg
     history.replaceState(null, '', url);
   }
 
-  function next() { idx = (idx + 1) % items.length; render(); }
-  function prev() { idx = (idx - 1 + items.length) % items.length; render(); }
+  function next() {
+    if (!items.length) return;
+    idx = (idx + 1) % items.length;
+    render();
+  }
+  function prev() {
+    if (!items.length) return;
+    idx = (idx - 1 + items.length) % items.length;
+    render();
+  }
   function rand() {
     if (items.length <= 1) return;
     let r;
