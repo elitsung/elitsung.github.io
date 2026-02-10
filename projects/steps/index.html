@@ -661,6 +661,17 @@
                 family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                 size: 16
               }
+            },
+            tooltip: {
+              callbacks: {
+                title: function(context) {
+                  // Get the date from the sorted data
+                  const index = context[0].dataIndex;
+                  const date = sortedData[index].date;
+                  const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '. ');
+                  return `Steps on ${formattedDate}`;
+                }
+              }
             }
           },
           scales: {
