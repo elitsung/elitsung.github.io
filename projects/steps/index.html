@@ -653,7 +653,8 @@
               pointHoverRadius: 0,
               tension: 0.1,
               fill: false,
-              hidden: false // Keep it active for tooltip but invisible
+              hidden: false, // Keep it active for tooltip but invisible
+              yAxisID: 'y1' // Use separate hidden y-axis
             }
           ]
         },
@@ -703,6 +704,10 @@
                   family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
                 }
               }
+            },
+            y1: {
+              display: false, // Hidden axis for daily steps
+              beginAtZero: true
             },
             x: {
               ticks: {
