@@ -21,7 +21,12 @@
     }
     .metric {
       font-size: 1.2rem;
-      margin: 2rem 0;
+      margin: 0.5rem 0;
+    }
+    .week-subtitle {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.25rem;
     }
     .deficit {
       color: #dc3545;
@@ -92,15 +97,15 @@
       weekStart.setDate(now.getDate() - now.getDay());
       weekStart.setHours(0, 0, 0, 0);
 
-      // Calculate days elapsed
-      const daysInYear = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24)) + 1;
-      const daysInMonth = Math.floor((now - monthStart) / (1000 * 60 * 60 * 24)) + 1;
-      const daysInWeek = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24)) + 1;
-
       // Filter data by period
       const yearData = data.filter(d => d.date >= yearStart && d.date <= now);
       const monthData = data.filter(d => d.date >= monthStart && d.date <= now);
       const weekData = data.filter(d => d.date >= weekStart && d.date <= now);
+
+      // Count actual days with data (not calendar days elapsed)
+      const daysInYear = yearData.length;
+      const daysInMonth = monthData.length;
+      const daysInWeek = weekData.length;
 
       // Calculate totals
       const yearSteps = yearData.reduce((sum, d) => sum + d.steps, 0);
@@ -112,20 +117,33 @@
       const monthDeficit = monthSteps - (DAILY_GOAL * daysInMonth);
       const weekDeficit = weekSteps - (DAILY_GOAL * daysInWeek);
 
+      // Get month name for display
+      const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+
+      // Get week date range for subtitle
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const weekRange = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
       // Display results
       displayMetric('year-metric', 'Step Deficit in 2026', yearDeficit);
-      displayMetric('month-metric', 'Deficit This Month', monthDeficit);
-      displayMetric('week-metric', 'Deficit This Week', weekDeficit);
+      displayMetric('month-metric', `Deficit in ${monthName}`, monthDeficit);
+      displayMetric('week-metric', 'Deficit This Week', weekDeficit, weekRange);
     }
 
-    function displayMetric(elementId, label, value) {
+    function displayMetric(elementId, label, value, subtitle = null) {
       const element = document.getElementById(elementId);
       const isDeficit = value < 0;
       const absValue = Math.abs(value).toLocaleString();
       const status = isDeficit ? 'Deficit' : 'Surplus';
       const className = isDeficit ? 'deficit' : 'surplus';
 
-      element.innerHTML = `<span class="${className}">${label.replace('Deficit', status)}: ${absValue}</span>`;
+      let html = `<span class="${className}">${label.replace('Deficit', status)}: ${absValue}</span>`;
+      if (subtitle) {
+        html += `<div class="week-subtitle">${subtitle}</div>`;
+      }
+
+      element.innerHTML = html;
     }
 
     function createCumulativeChart(data) {
