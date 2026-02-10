@@ -8,16 +8,22 @@
   <style>
     body {
       font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      max-width: 900px;
-      margin: 0 auto;
+      margin: 0;
       line-height: 1.2;
       background-color: #fff;
       color: #111;
-      text-align: center;
+    }
+    #main-content {
+      max-width: 900px;
+      margin: 0 auto;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem 1rem;
+      box-sizing: border-box;
     }
     .metric {
       font-size: 1.2rem;
@@ -40,7 +46,8 @@
     }
     #chart-container {
       margin: 3rem 0;
-      max-width: 100%;
+      width: 100%;
+      max-width: 900px;
     }
     #year-metric {
       font-size: 2.0rem;
@@ -159,12 +166,14 @@
   </style>
 </head>
 <body>
-  <div class="metric" id="year-metric">Loading...</div>
-  <div class="metric" id="month-metric">Loading...</div>
-  <div class="metric" id="week-metric">Loading...</div>
+  <div id="main-content">
+    <div class="metric" id="year-metric">Loading...</div>
+    <div class="metric" id="month-metric">Loading...</div>
+    <div class="metric" id="week-metric">Loading...</div>
 
-  <div id="chart-container">
-    <canvas id="steps-chart"></canvas>
+    <div id="chart-container">
+      <canvas id="steps-chart"></canvas>
+    </div>
   </div>
 
   <!-- Comments Section -->
