@@ -8,11 +8,15 @@
     body {
       font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       max-width: 900px;
-      margin: 2rem auto;
+      margin: 0 auto;
       line-height: 1.6;
       background-color: #fff;
       color: #111;
       text-align: center;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     h1 {
       font-weight: 500;
@@ -32,17 +36,91 @@
       color: blue;
       text-decoration: underline;
     }
+    #password-form {
+      margin: 2rem 0;
+    }
+    #password-input {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #111;
+      margin-right: 0.5rem;
+    }
+    #password-submit {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #111;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    #password-submit:hover {
+      background-color: #333;
+    }
+    .error {
+      color: #dc3545;
+      margin-top: 1rem;
+    }
+    #content {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h1>Step Tracker</h1>
+  <div id="auth-container">
+    <h1>Step Tracker</h1>
+    <form id="password-form">
+      <input type="password" id="password-input" placeholder="Enter password" />
+      <button type="submit" id="password-submit">Enter</button>
+    </form>
+    <div id="error-message" class="error"></div>
+  </div>
 
-  <div class="metric" id="year-metric">Loading...</div>
-  <div class="metric" id="month-metric">Loading...</div>
-  <div class="metric" id="week-metric">Loading...</div>
+  <div id="content">
+    <h1>Step Tracker</h1>
+    <div class="metric" id="year-metric">Loading...</div>
+    <div class="metric" id="month-metric">Loading...</div>
+    <div class="metric" id="week-metric">Loading...</div>
+  </div>
 
   <script>
     const DAILY_GOAL = 10000;
+    // Store password hash - change this to your desired password hash
+    // To generate: use a SHA-256 hash generator online or console.log(await hashPassword('yourpassword'))
+    const PASSWORD_HASH = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'; // This is hash of empty string - CHANGE THIS
+
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function verifyPassword() {
+      const input = document.getElementById('password-input');
+      const errorMessage = document.getElementById('error-message');
+      const password = input.value;
+
+      const hash = await hashPassword(password);
+
+      if (hash === PASSWORD_HASH) {
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        loadStepData();
+      } else {
+        errorMessage.textContent = 'Incorrect password';
+        input.value = '';
+      }
+    }
+
+    // Handle form submission
+    document.getElementById('password-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      verifyPassword();
+    });
 
     async function loadStepData() {
       try {
@@ -113,9 +191,6 @@
 
       element.innerHTML = `<span class="${className}">${label.replace('Deficit', status)}: ${absValue}</span>`;
     }
-
-    // Load data on page load
-    loadStepData();
   </script>
 </body>
 </html>
