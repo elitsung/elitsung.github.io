@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Step Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      max-width: 900px;
+      margin: 2rem auto;
+      line-height: 1.6;
+      background-color: #fff;
+      color: #111;
+      text-align: center;
+    }
+    h1 {
+      font-weight: 500;
+      margin-bottom: 3rem;
+    }
+    .metric {
+      font-size: 1.2rem;
+      margin: 2rem 0;
+    }
+    .deficit {
+      color: #dc3545;
+    }
+    .surplus {
+      color: #28a745;
+    }
+    a {
+      color: blue;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Step Tracker</h1>
+
+  <div class="metric" id="year-metric">Loading...</div>
+  <div class="metric" id="month-metric">Loading...</div>
+  <div class="metric" id="week-metric">Loading...</div>
+
+  <script>
+    const DAILY_GOAL = 10000;
+
+    async function loadStepData() {
+      try {
+        const response = await fetch('steps_data.csv');
+        const text = await response.text();
+        const lines = text.trim().split('\n');
+
+        // Parse CSV (skip header)
+        const data = lines.slice(1).map(line => {
+          const [date, steps] = line.split(',');
+          return {
+            date: new Date(date),
+            steps: parseInt(steps)
+          };
+        }).filter(entry => !isNaN(entry.steps));
+
+        calculateDeficits(data);
+      } catch (error) {
+        console.error('Error loading step data:', error);
+        document.getElementById('year-metric').textContent = 'Error loading data';
+        document.getElementById('month-metric').textContent = '';
+        document.getElementById('week-metric').textContent = '';
+      }
+    }
+
+    function calculateDeficits(data) {
+      const now = new Date();
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Get start of week (Sunday)
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+
+      // Calculate days elapsed
+      const daysInYear = Math.floor((now - yearStart) / (1000 * 60 * 60 * 24)) + 1;
+      const daysInMonth = Math.floor((now - monthStart) / (1000 * 60 * 60 * 24)) + 1;
+      const daysInWeek = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24)) + 1;
+
+      // Filter data by period
+      const yearData = data.filter(d => d.date >= yearStart && d.date <= now);
+      const monthData = data.filter(d => d.date >= monthStart && d.date <= now);
+      const weekData = data.filter(d => d.date >= weekStart && d.date <= now);
+
+      // Calculate totals
+      const yearSteps = yearData.reduce((sum, d) => sum + d.steps, 0);
+      const monthSteps = monthData.reduce((sum, d) => sum + d.steps, 0);
+      const weekSteps = weekData.reduce((sum, d) => sum + d.steps, 0);
+
+      // Calculate deficits (negative means deficit, positive means surplus)
+      const yearDeficit = yearSteps - (DAILY_GOAL * daysInYear);
+      const monthDeficit = monthSteps - (DAILY_GOAL * daysInMonth);
+      const weekDeficit = weekSteps - (DAILY_GOAL * daysInWeek);
+
+      // Display results
+      displayMetric('year-metric', 'Step Deficit in 2026', yearDeficit);
+      displayMetric('month-metric', 'Deficit This Month', monthDeficit);
+      displayMetric('week-metric', 'Deficit This Week', weekDeficit);
+    }
+
+    function displayMetric(elementId, label, value) {
+      const element = document.getElementById(elementId);
+      const isDeficit = value < 0;
+      const absValue = Math.abs(value).toLocaleString();
+      const status = isDeficit ? 'Deficit' : 'Surplus';
+      const className = isDeficit ? 'deficit' : 'surplus';
+
+      element.innerHTML = `<span class="${className}">${label.replace('Deficit', status)}: ${absValue}</span>`;
+    }
+
+    // Load data on page load
+    loadStepData();
+  </script>
+</body>
+</html>
