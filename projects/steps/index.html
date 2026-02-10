@@ -595,6 +595,7 @@
 
       const startDate = sortedData[0].date;
       const labels = [];
+      const fullDateLabels = []; // Store full date labels for tooltip
       const actualCumulative = [];
       const benchmarkCumulative = [];
 
@@ -605,7 +606,12 @@
         cumulativeSteps += entry.steps;
         const dayNumber = index + 1;
 
-        labels.push(entry.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        const shortLabel = entry.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        labels.push(shortLabel);
+        // Format as "Jan. 28" for tooltip
+        const monthAbbr = entry.date.toLocaleDateString('en-US', { month: 'short' });
+        const day = entry.date.getDate();
+        fullDateLabels.push(`Steps on ${monthAbbr} ${day}`);
         actualCumulative.push(cumulativeSteps);
         benchmarkCumulative.push(DAILY_GOAL * dayNumber);
       });
@@ -665,11 +671,9 @@
             tooltip: {
               callbacks: {
                 title: function(context) {
-                  // Get the date from the sorted data
+                  // Get the formatted date label
                   const index = context[0].dataIndex;
-                  const date = sortedData[index].date;
-                  const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).replace(' ', '. ');
-                  return `Steps on ${formattedDate}`;
+                  return fullDateLabels[index];
                 }
               }
             }
