@@ -46,6 +46,116 @@
       font-size: 2.0rem;
       font-weight: bold;
     }
+
+    /* Comments Section */
+    #comments-section {
+      max-width: 700px;
+      margin: 4rem auto 2rem;
+      padding: 2rem;
+      text-align: left;
+      border-top: 1px solid rgba(0, 0, 0, 0.15);
+    }
+    #comments-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+    }
+    .comment-form {
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background-color: #f9f9f9;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .comment-form input,
+    .comment-form textarea {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.9rem;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      background-color: #fff;
+      color: #111;
+      box-sizing: border-box;
+    }
+    .comment-form input:focus,
+    .comment-form textarea:focus {
+      outline: 2px solid #111;
+      outline-offset: -2px;
+    }
+    .comment-form textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .comment-form button {
+      padding: 0.75rem 1.5rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background-color: #111;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .comment-form button:hover {
+      background-color: #333;
+    }
+    .comment-form button:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+    .form-message {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      padding: 0.5rem;
+    }
+    .form-message.success {
+      color: #28a745;
+      background-color: rgba(40, 167, 69, 0.1);
+    }
+    .form-message.error {
+      color: #dc3545;
+      background-color: rgba(220, 53, 69, 0.1);
+    }
+    .comments-list {
+      margin-top: 2rem;
+    }
+    .comment {
+      padding: 1rem 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .comment:last-child {
+      border-bottom: none;
+    }
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .comment-author {
+      font-weight: 500;
+      color: #111;
+    }
+    .comment-date {
+      color: #666;
+    }
+    .comment-text {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .loading {
+      color: #666;
+      font-style: italic;
+    }
+    .no-comments {
+      color: #666;
+      font-style: italic;
+      padding: 1rem 0;
+    }
   </style>
 </head>
 <body>
@@ -56,6 +166,179 @@
   <div id="chart-container">
     <canvas id="steps-chart"></canvas>
   </div>
+
+  <!-- Comments Section -->
+  <div id="comments-section">
+    <h2>Comments</h2>
+
+    <div class="comment-form">
+      <input type="text" id="comment-name" placeholder="Your name" maxlength="50" required>
+      <textarea id="comment-text" placeholder="Leave a comment..." maxlength="500" required></textarea>
+      <button id="submit-comment">Post Comment</button>
+      <div id="form-message"></div>
+    </div>
+
+    <div class="comments-list">
+      <div id="comments-container" class="loading">Loading comments...</div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    // Firebase configuration - YOU NEED TO REPLACE THIS WITH YOUR CONFIG
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Reference to comments collection
+    const commentsRef = collection(db, 'step-tracker-comments');
+
+    // Load and display comments in real-time
+    function loadComments() {
+      const q = query(commentsRef, orderBy('timestamp', 'desc'));
+
+      onSnapshot(q, (snapshot) => {
+        const commentsContainer = document.getElementById('comments-container');
+
+        if (snapshot.empty) {
+          commentsContainer.innerHTML = '<div class="no-comments">No comments yet. Be the first to comment!</div>';
+          commentsContainer.classList.remove('loading');
+          return;
+        }
+
+        commentsContainer.innerHTML = '';
+        commentsContainer.classList.remove('loading');
+
+        snapshot.forEach((doc) => {
+          const comment = doc.data();
+          const commentEl = createCommentElement(comment);
+          commentsContainer.appendChild(commentEl);
+        });
+      }, (error) => {
+        console.error('Error loading comments:', error);
+        document.getElementById('comments-container').innerHTML =
+          '<div class="error">Error loading comments. Please refresh the page.</div>';
+      });
+    }
+
+    // Create comment HTML element
+    function createCommentElement(comment) {
+      const div = document.createElement('div');
+      div.className = 'comment';
+
+      const date = comment.timestamp ?
+        new Date(comment.timestamp.toDate()).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        }) : 'Just now';
+
+      div.innerHTML = `
+        <div class="comment-header">
+          <span class="comment-author">${escapeHtml(comment.name)}</span>
+          <span class="comment-date">${date}</span>
+        </div>
+        <div class="comment-text">${escapeHtml(comment.text)}</div>
+      `;
+
+      return div;
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Submit comment
+    document.getElementById('submit-comment').addEventListener('click', async () => {
+      const nameInput = document.getElementById('comment-name');
+      const textInput = document.getElementById('comment-text');
+      const submitBtn = document.getElementById('submit-comment');
+      const messageDiv = document.getElementById('form-message');
+
+      const name = nameInput.value.trim();
+      const text = textInput.value.trim();
+
+      // Validation
+      if (!name || !text) {
+        showMessage('Please fill in both name and comment.', 'error');
+        return;
+      }
+
+      if (name.length > 50) {
+        showMessage('Name must be 50 characters or less.', 'error');
+        return;
+      }
+
+      if (text.length > 500) {
+        showMessage('Comment must be 500 characters or less.', 'error');
+        return;
+      }
+
+      // Disable button while submitting
+      submitBtn.disabled = true;
+      messageDiv.textContent = '';
+
+      try {
+        await addDoc(commentsRef, {
+          name: name,
+          text: text,
+          timestamp: serverTimestamp()
+        });
+
+        // Clear form
+        nameInput.value = '';
+        textInput.value = '';
+        showMessage('Comment posted successfully!', 'success');
+      } catch (error) {
+        console.error('Error posting comment:', error);
+        showMessage('Error posting comment. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Show form message
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('form-message');
+      messageDiv.textContent = text;
+      messageDiv.className = `form-message ${type}`;
+
+      if (type === 'success') {
+        setTimeout(() => {
+          messageDiv.textContent = '';
+          messageDiv.className = 'form-message';
+        }, 3000);
+      }
+    }
+
+    // Allow Enter key in textarea (but Ctrl+Enter submits)
+    document.getElementById('comment-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        document.getElementById('submit-comment').click();
+      }
+    });
+
+    // Load comments when page loads
+    loadComments();
+  </script>
 
   <script>
     const DAILY_GOAL = 10000;
