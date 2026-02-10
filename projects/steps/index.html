@@ -64,8 +64,10 @@
         // Parse CSV (skip header)
         const data = lines.slice(1).map(line => {
           const [date, steps] = line.split(',');
+          // Parse date as local time to avoid timezone issues
+          const [year, month, day] = date.split('-').map(Number);
           return {
-            date: new Date(date),
+            date: new Date(year, month - 1, day),
             steps: parseInt(steps)
           };
         }).filter(entry => !isNaN(entry.steps));
