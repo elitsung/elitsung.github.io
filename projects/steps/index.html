@@ -598,6 +598,7 @@
       const fullDateLabels = []; // Store full date labels for tooltip
       const actualCumulative = [];
       const benchmarkCumulative = [];
+      const dailySteps = []; // Store daily steps for tooltip only
 
       let cumulativeSteps = 0;
 
@@ -614,6 +615,7 @@
         fullDateLabels.push(`Steps on ${monthAbbr} ${day}`);
         actualCumulative.push(cumulativeSteps);
         benchmarkCumulative.push(DAILY_GOAL * dayNumber);
+        dailySteps.push(entry.steps); // Store daily steps
       });
 
       const ctx = document.getElementById('steps-chart').getContext('2d');
@@ -640,6 +642,19 @@
               borderDash: [5, 5],
               tension: 0.1,
               fill: false
+            },
+            {
+              label: 'Daily Steps',
+              data: dailySteps,
+              borderColor: 'rgba(0, 0, 0, 0)', // Transparent
+              backgroundColor: 'rgba(0, 0, 0, 0)', // Transparent
+              borderWidth: 0,
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              tension: 0.1,
+              fill: false,
+              hidden: false, // Keep it active for tooltip but invisible
+              yAxisID: 'y1' // Use separate hidden y-axis
             }
           ]
         },
@@ -689,6 +704,10 @@
                   family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
                 }
               }
+            },
+            y1: {
+              display: false, // Hidden axis for daily steps
+              beginAtZero: true
             },
             x: {
               ticks: {
