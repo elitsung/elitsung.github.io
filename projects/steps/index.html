@@ -163,6 +163,54 @@
       font-style: italic;
       padding: 1rem 0;
     }
+    .comment-actions {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .reply-btn {
+      background: none;
+      border: none;
+      color: #0066cc;
+      cursor: pointer;
+      padding: 0;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+    .reply-btn:hover {
+      color: #0052a3;
+    }
+    .comment-replies {
+      margin-left: 2rem;
+      margin-top: 1rem;
+      padding-left: 1rem;
+      border-left: 2px solid rgba(0, 0, 0, 0.1);
+    }
+    .comment.reply {
+      padding: 0.75rem 0;
+    }
+    .replying-to {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background-color: rgba(0, 102, 204, 0.05);
+      border-left: 2px solid #0066cc;
+    }
+    .replying-to button {
+      background: none;
+      border: none;
+      color: #dc3545;
+      cursor: pointer;
+      padding: 0;
+      margin-left: 0.5rem;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.85rem;
+      text-decoration: underline;
+    }
+    .replying-to button:hover {
+      color: #a71d2a;
+    }
   </style>
 </head>
 <body>
@@ -181,6 +229,7 @@
     <h2>Comments</h2>
 
     <div class="comment-form">
+      <div id="replying-indicator"></div>
       <input type="text" id="comment-name" placeholder="Your name" maxlength="50" required>
       <textarea id="comment-text" placeholder="Leave a comment..." maxlength="500" required></textarea>
       <button id="submit-comment">Post Comment</button>
@@ -196,7 +245,7 @@
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
     // Firebase configuration - YOU NEED TO REPLACE THIS WITH YOUR CONFIG
     const firebaseConfig = {
@@ -216,6 +265,9 @@
     // Reference to comments collection
     const commentsRef = collection(db, 'step-tracker-comments');
 
+    // State for reply mode
+    let replyingTo = null;
+
     // Load and display comments in real-time
     function loadComments() {
       const q = query(commentsRef, orderBy('timestamp', 'desc'));
@@ -232,10 +284,52 @@
         commentsContainer.innerHTML = '';
         commentsContainer.classList.remove('loading');
 
+        // Organize comments into parent-child structure
+        const allComments = [];
         snapshot.forEach((doc) => {
-          const comment = doc.data();
-          const commentEl = createCommentElement(comment);
+          allComments.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+
+        // Separate parent comments and replies
+        const parentComments = allComments.filter(c => !c.parentId);
+        const replies = allComments.filter(c => c.parentId);
+
+        // Build a map of replies by parentId
+        const repliesMap = {};
+        replies.forEach(reply => {
+          if (!repliesMap[reply.parentId]) {
+            repliesMap[reply.parentId] = [];
+          }
+          repliesMap[reply.parentId].push(reply);
+        });
+
+        // Sort replies by timestamp (oldest first for replies)
+        Object.keys(repliesMap).forEach(parentId => {
+          repliesMap[parentId].sort((a, b) => {
+            if (!a.timestamp || !b.timestamp) return 0;
+            return a.timestamp.toMillis() - b.timestamp.toMillis();
+          });
+        });
+
+        // Render parent comments with their replies
+        parentComments.forEach((comment) => {
+          const commentEl = createCommentElement(comment, false);
           commentsContainer.appendChild(commentEl);
+
+          // Add replies if any
+          const commentReplies = repliesMap[comment.id] || [];
+          if (commentReplies.length > 0) {
+            const repliesContainer = document.createElement('div');
+            repliesContainer.className = 'comment-replies';
+            commentReplies.forEach(reply => {
+              const replyEl = createCommentElement(reply, true);
+              repliesContainer.appendChild(replyEl);
+            });
+            commentEl.appendChild(repliesContainer);
+          }
         });
       }, (error) => {
         console.error('Error loading comments:', error);
@@ -245,9 +339,9 @@
     }
 
     // Create comment HTML element
-    function createCommentElement(comment) {
+    function createCommentElement(comment, isReply = false) {
       const div = document.createElement('div');
-      div.className = 'comment';
+      div.className = isReply ? 'comment reply' : 'comment';
 
       const date = comment.timestamp ?
         new Date(comment.timestamp.toDate()).toLocaleDateString('en-US', {
@@ -264,7 +358,16 @@
           <span class="comment-date">${date}</span>
         </div>
         <div class="comment-text">${escapeHtml(comment.text)}</div>
+        <div class="comment-actions">
+          <button class="reply-btn" data-comment-id="${comment.id}" data-comment-author="${escapeHtml(comment.name)}">Reply</button>
+        </div>
       `;
+
+      // Add reply button event listener
+      const replyBtn = div.querySelector('.reply-btn');
+      replyBtn.addEventListener('click', () => {
+        startReply(comment.id, comment.name);
+      });
 
       return div;
     }
@@ -274,6 +377,29 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // Start reply mode
+    function startReply(commentId, authorName) {
+      replyingTo = { id: commentId, name: authorName };
+
+      const indicator = document.getElementById('replying-indicator');
+      indicator.className = 'replying-to';
+      indicator.innerHTML = `Replying to <strong>${escapeHtml(authorName)}</strong> <button id="cancel-reply">Cancel</button>`;
+
+      // Focus on the text input
+      document.getElementById('comment-text').focus();
+
+      // Add cancel button listener
+      document.getElementById('cancel-reply').addEventListener('click', cancelReply);
+    }
+
+    // Cancel reply mode
+    function cancelReply() {
+      replyingTo = null;
+      const indicator = document.getElementById('replying-indicator');
+      indicator.className = '';
+      indicator.innerHTML = '';
     }
 
     // Submit comment
@@ -307,15 +433,19 @@
       messageDiv.textContent = '';
 
       try {
-        await addDoc(commentsRef, {
+        const commentData = {
           name: name,
           text: text,
-          timestamp: serverTimestamp()
-        });
+          timestamp: serverTimestamp(),
+          parentId: replyingTo ? replyingTo.id : null
+        };
+
+        await addDoc(commentsRef, commentData);
 
         // Clear form
         nameInput.value = '';
         textInput.value = '';
+        cancelReply(); // Clear reply mode
         showMessage('Comment posted successfully!', 'success');
       } catch (error) {
         console.error('Error posting comment:', error);
