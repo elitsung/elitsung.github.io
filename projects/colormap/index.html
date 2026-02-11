@@ -1,0 +1,347 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Color Map Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(2deg); }
+      50% { transform: rotate(-2deg); }
+      75% { transform: rotate(1deg); }
+    }
+    body {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+      background-color: #fff;
+      color: #111;
+    }
+    header {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem 0 1rem;
+    }
+    header h1 {
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    header h1 a {
+      color: blue;
+      text-decoration: underline;
+      font-style: normal;
+      transition: font-style 0.1s ease;
+    }
+    header h1 a:hover {
+      display: inline-block;
+      font-style: italic;
+      text-decoration: underline;
+      animation: wiggle 0.3s ease-in-out infinite;
+    }
+    .nav-inline {
+      text-align: left;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      letter-spacing: 0.3px;
+      color: blue;
+    }
+    .nav-inline a {
+      text-decoration: underline;
+      color: blue;
+    }
+    .nav-inline a:hover {
+      display: inline-block;
+      font-style: italic;
+      animation: wiggle 0.3s ease-in-out infinite;
+    }
+    .page-divider {
+      border: none;
+      border-top: 1px solid rgba(0, 0, 0, 0.15);
+      margin: 1.5rem auto 2rem auto;
+      max-width: 900px;
+      width: calc(100% - 2rem);
+    }
+    #map-container {
+      max-width: 1400px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    #color-map {
+      width: 100%;
+      height: 700px;
+      position: relative;
+      cursor: crosshair;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      background: linear-gradient(to bottom, #fff 0%, #888 50%, #000 100%);
+    }
+    .color-region {
+      position: absolute;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .color-region:hover {
+      border: 2px solid #111;
+      z-index: 100;
+      transform: scale(1.05);
+    }
+    #info-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #111;
+      padding: 1.5rem;
+      min-width: 250px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      display: none;
+      z-index: 1000;
+    }
+    #info-panel.visible {
+      display: block;
+    }
+    #info-panel h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+    .info-row {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+      align-items: center;
+    }
+    .info-label {
+      font-weight: 500;
+      min-width: 80px;
+    }
+    .color-swatch {
+      width: 60px;
+      height: 60px;
+      border: 1px solid #111;
+      margin-bottom: 1rem;
+    }
+    #instructions {
+      max-width: 900px;
+      margin: 0 auto 2rem auto;
+      padding: 0 1rem;
+      text-align: center;
+      color: #666;
+      font-size: 0.95rem;
+    }
+    .legend {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .legend h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border: 1px solid #111;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><a href="/">eli tsung</a></h1>
+    <nav class="nav-inline">
+      <a href="/">home</a> ✱
+      <a href="/projects/steps/">steps</a> ✱
+      <a href="/projects/colormap/">colormap</a>
+    </nav>
+  </header>
+  <hr class="page-divider">
+
+  <div id="instructions">
+    Hover over the color map to explore different shades. Click to pin color information.
+  </div>
+
+  <div id="map-container">
+    <div id="color-map"></div>
+  </div>
+
+  <div id="info-panel">
+    <div class="color-swatch" id="color-swatch"></div>
+    <h3 id="color-name">Color Name</h3>
+    <div class="info-row">
+      <span class="info-label">Hex:</span>
+      <span id="color-hex">#000000</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">RGB:</span>
+      <span id="color-rgb">rgb(0, 0, 0)</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">HSL:</span>
+      <span id="color-hsl">hsl(0, 0%, 0%)</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <h3>Color Families</h3>
+    <div class="legend-grid" id="legend-grid"></div>
+  </div>
+
+  <script src="colors.js"></script>
+  <script>
+    const mapEl = document.getElementById('color-map');
+    const infoPanelEl = document.getElementById('info-panel');
+    let isPinned = false;
+
+    // Convert hex to RGB
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    }
+
+    // Convert RGB to HSL
+    function rgbToHsl(r, g, b) {
+      r /= 255;
+      g /= 255;
+      b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+          case g: h = ((b - r) / d + 2) / 6; break;
+          case b: h = ((r - g) / d + 4) / 6; break;
+        }
+      }
+
+      return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        l: Math.round(l * 100)
+      };
+    }
+
+    // Position colors on the map using HSL coordinates
+    function positionColor(color) {
+      const rgb = hexToRgb(color.hex);
+      const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+      // Map hue to x-axis (0-360 degrees -> 0-100%)
+      const x = (hsl.h / 360) * 100;
+
+      // Map lightness to y-axis (0-100% -> 0-100%, inverted)
+      const y = 100 - hsl.l;
+
+      // Adjust saturation for region size
+      const size = Math.max(2, hsl.s / 10);
+
+      return { x, y, size, hsl };
+    }
+
+    // Render the color map
+    function renderColorMap() {
+      mapEl.innerHTML = '';
+
+      COLORS.forEach(color => {
+        const pos = positionColor(color);
+        const region = document.createElement('div');
+        region.className = 'color-region';
+        region.style.left = `${pos.x}%`;
+        region.style.top = `${pos.y}%`;
+        region.style.width = `${pos.size}%`;
+        region.style.height = `${pos.size}%`;
+        region.style.backgroundColor = color.hex;
+        region.style.transform = `translate(-50%, -50%)`;
+
+        region.addEventListener('mouseenter', () => {
+          if (!isPinned) {
+            showColorInfo(color);
+          }
+        });
+
+        region.addEventListener('click', (e) => {
+          e.stopPropagation();
+          isPinned = !isPinned;
+          showColorInfo(color);
+        });
+
+        mapEl.appendChild(region);
+      });
+    }
+
+    // Show color information
+    function showColorInfo(color) {
+      const rgb = hexToRgb(color.hex);
+      const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+      document.getElementById('color-name').textContent = color.name;
+      document.getElementById('color-hex').textContent = color.hex;
+      document.getElementById('color-rgb').textContent =
+        `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      document.getElementById('color-hsl').textContent =
+        `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+      document.getElementById('color-swatch').style.backgroundColor = color.hex;
+
+      infoPanelEl.classList.add('visible');
+    }
+
+    // Render legend
+    function renderLegend() {
+      const legendGrid = document.getElementById('legend-grid');
+      const families = {};
+
+      COLORS.forEach(color => {
+        if (!families[color.family]) {
+          families[color.family] = color.hex;
+        }
+      });
+
+      Object.entries(families).forEach(([family, hex]) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+          <div class="legend-color" style="background-color: ${hex}"></div>
+          <span>${family}</span>
+        `;
+        legendGrid.appendChild(item);
+      });
+    }
+
+    // Click outside to unpin
+    document.addEventListener('click', (e) => {
+      if (!infoPanelEl.contains(e.target) && !e.target.classList.contains('color-region')) {
+        isPinned = false;
+        infoPanelEl.classList.remove('visible');
+      }
+    });
+
+    // Initialize
+    renderColorMap();
+    renderLegend();
+  </script>
+</body>
+</html>
