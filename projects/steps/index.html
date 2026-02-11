@@ -584,8 +584,8 @@
 
       // Display results
       displayMetric('year-metric', 'Step Deficit in 2026', yearDeficit, null, todayDelta);
-      displayMetric('month-metric', `Deficit in ${monthName}`, monthDeficit, null, todayDelta);
-      displayMetric('week-metric', 'Deficit This Week', weekDeficit, weekRange, todayDelta);
+      displayMetric('month-metric', `Deficit in ${monthName}`, monthDeficit);
+      displayMetric('week-metric', 'Deficit This Week', weekDeficit, weekRange);
     }
 
     function displayMetric(elementId, label, value, subtitle = null, todayDelta = null) {
@@ -600,20 +600,26 @@
       // Add today's delta indicator
       if (todayDelta !== null) {
         const todayAboveGoal = todayDelta >= 0;
-        let deltaArrow, deltaClass;
+        let deltaArrow, deltaClass, tooltipText;
 
         if (isDeficit) {
           // In deficit: above goal reduces deficit (↓ good), below goal increases it (↑ bad)
           deltaArrow = todayAboveGoal ? '↓' : '↑';
           deltaClass = todayAboveGoal ? 'positive' : 'negative';
+          tooltipText = todayAboveGoal ?
+            `Today reduced deficit by ${Math.abs(todayDelta).toLocaleString()} steps` :
+            `Today increased deficit by ${Math.abs(todayDelta).toLocaleString()} steps`;
         } else {
           // In surplus: above goal increases surplus (↑ good), below goal decreases it (↓ bad)
           deltaArrow = todayAboveGoal ? '↑' : '↓';
           deltaClass = todayAboveGoal ? 'positive' : 'negative';
+          tooltipText = todayAboveGoal ?
+            `Today increased surplus by ${Math.abs(todayDelta).toLocaleString()} steps` :
+            `Today reduced surplus by ${Math.abs(todayDelta).toLocaleString()} steps`;
         }
 
         const deltaValue = Math.abs(todayDelta).toLocaleString();
-        html += `<span class="delta ${deltaClass}">today: ${deltaArrow}${deltaValue}</span>`;
+        html += `<span class="delta ${deltaClass}" title="${tooltipText}">today: ${deltaArrow}${deltaValue}</span>`;
       }
 
       if (subtitle) {
