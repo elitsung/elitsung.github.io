@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <title>Color Map Explorer</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
   <style>
     @keyframes wiggle {
       0%, 100% { transform: rotate(0deg); }
@@ -67,25 +69,59 @@
       max-width: 1400px;
       margin: 2rem auto;
       padding: 0 1rem;
+      position: relative;
     }
-    #color-map {
+    #color-map-wrapper {
+      position: relative;
       width: 100%;
       height: 700px;
-      position: relative;
-      cursor: crosshair;
       border: 1px solid rgba(0, 0, 0, 0.15);
-      background: linear-gradient(to bottom, #fff 0%, #888 50%, #000 100%);
+      overflow: hidden;
     }
-    .color-region {
+    #color-spectrum {
       position: absolute;
-      transition: all 0.2s ease;
-      border: 1px solid transparent;
-      cursor: pointer;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
-    .color-region:hover {
-      border: 2px solid #111;
-      z-index: 100;
-      transform: scale(1.05);
+    #color-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    .voronoi-cell {
+      fill: none;
+      stroke: rgba(0, 0, 0, 0.2);
+      stroke-width: 1.5;
+      pointer-events: all;
+      transition: stroke 0.2s ease;
+    }
+    .voronoi-cell:hover {
+      stroke: #111;
+      stroke-width: 2.5;
+    }
+    .color-point {
+      fill: #111;
+      stroke: #fff;
+      stroke-width: 1.5;
+      pointer-events: none;
+    }
+    .color-label {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      fill: #111;
+      text-anchor: middle;
+      pointer-events: none;
+      text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .voronoi-cell:hover + .color-label {
+      opacity: 1;
     }
     #info-panel {
       position: fixed;
@@ -131,32 +167,18 @@
       color: #666;
       font-size: 0.95rem;
     }
-    .legend {
+    .controls {
       max-width: 900px;
-      margin: 2rem auto;
+      margin: 1rem auto;
       padding: 0 1rem;
+      text-align: center;
     }
-    .legend h3 {
-      font-size: 1.1rem;
-      margin-bottom: 1rem;
-      font-weight: 500;
+    .controls label {
+      margin-left: 1rem;
+      cursor: pointer;
     }
-    .legend-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 0.5rem;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.9rem;
-    }
-    .legend-color {
-      width: 20px;
-      height: 20px;
-      border: 1px solid #111;
-      flex-shrink: 0;
+    .controls input[type="checkbox"] {
+      cursor: pointer;
     }
   </style>
 </head>
@@ -172,11 +194,29 @@
   <hr class="page-divider">
 
   <div id="instructions">
-    Hover over the color map to explore different shades. Click to pin color information.
+    Explore the continuous color spectrum. Hover over regions to see named shades and their boundaries.
+  </div>
+
+  <div class="controls">
+    <label>
+      <input type="checkbox" id="show-points" checked>
+      Show color points
+    </label>
+    <label>
+      <input type="checkbox" id="show-boundaries" checked>
+      Show boundaries
+    </label>
+    <label>
+      <input type="checkbox" id="show-labels">
+      Show all labels
+    </label>
   </div>
 
   <div id="map-container">
-    <div id="color-map"></div>
+    <div id="color-map-wrapper">
+      <canvas id="color-spectrum"></canvas>
+      <svg id="color-svg"></svg>
+    </div>
   </div>
 
   <div id="info-panel">
@@ -196,16 +236,19 @@
     </div>
   </div>
 
-  <div class="legend">
-    <h3>Color Families</h3>
-    <div class="legend-grid" id="legend-grid"></div>
-  </div>
-
   <script src="colors.js"></script>
   <script>
-    const mapEl = document.getElementById('color-map');
+    const canvas = document.getElementById('color-spectrum');
+    const svg = d3.select('#color-svg');
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
+
+    const width = document.getElementById('color-map-wrapper').clientWidth;
+    const height = document.getElementById('color-map-wrapper').clientHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+    svg.attr('width', width).attr('height', height);
 
     // Convert hex to RGB
     function hexToRgb(hex) {
@@ -245,103 +288,159 @@
       };
     }
 
+    // Convert HSL to RGB
+    function hslToRgb(h, s, l) {
+      h = h / 360;
+      s = s / 100;
+      l = l / 100;
+      let r, g, b;
+
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+
+      return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+      };
+    }
+
+    // Draw continuous color spectrum
+    function drawSpectrum() {
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.createImageData(width, height);
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const hue = (x / width) * 360;
+          const lightness = 100 - (y / height) * 100;
+          const saturation = 100;
+
+          const rgb = hslToRgb(hue, saturation, lightness);
+          const index = (y * width + x) * 4;
+
+          imageData.data[index] = rgb.r;
+          imageData.data[index + 1] = rgb.g;
+          imageData.data[index + 2] = rgb.b;
+          imageData.data[index + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
     // Position colors on the map using HSL coordinates
     function positionColor(color) {
       const rgb = hexToRgb(color.hex);
       const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-      // Map hue to x-axis (0-360 degrees -> 0-100%)
-      const x = (hsl.h / 360) * 100;
+      const x = (hsl.h / 360) * width;
+      const y = height - (hsl.l / 100) * height;
 
-      // Map lightness to y-axis (0-100% -> 0-100%, inverted)
-      const y = 100 - hsl.l;
-
-      // Adjust saturation for region size
-      const size = Math.max(2, hsl.s / 10);
-
-      return { x, y, size, hsl };
+      return { x, y, hsl, rgb };
     }
 
-    // Render the color map
-    function renderColorMap() {
-      mapEl.innerHTML = '';
-
-      COLORS.forEach(color => {
+    // Create Voronoi diagram
+    function createVoronoi() {
+      const points = COLORS.map(color => {
         const pos = positionColor(color);
-        const region = document.createElement('div');
-        region.className = 'color-region';
-        region.style.left = `${pos.x}%`;
-        region.style.top = `${pos.y}%`;
-        region.style.width = `${pos.size}%`;
-        region.style.height = `${pos.size}%`;
-        region.style.backgroundColor = color.hex;
-        region.style.transform = `translate(-50%, -50%)`;
-
-        region.addEventListener('mouseenter', () => {
-          if (!isPinned) {
-            showColorInfo(color);
-          }
-        });
-
-        region.addEventListener('click', (e) => {
-          e.stopPropagation();
-          isPinned = !isPinned;
-          showColorInfo(color);
-        });
-
-        mapEl.appendChild(region);
+        return [pos.x, pos.y, color];
       });
+
+      const delaunay = d3.Delaunay.from(points, d => d[0], d => d[1]);
+      const voronoi = delaunay.voronoi([0, 0, width, height]);
+
+      // Draw Voronoi cells
+      const cells = svg.selectAll('.voronoi-cell')
+        .data(points)
+        .join('path')
+        .attr('class', 'voronoi-cell')
+        .attr('d', (d, i) => voronoi.renderCell(i))
+        .on('mouseenter', function(event, d) {
+          if (!isPinned) {
+            showColorInfo(d[2]);
+          }
+        })
+        .on('click', function(event, d) {
+          event.stopPropagation();
+          isPinned = !isPinned;
+          showColorInfo(d[2]);
+        });
+
+      // Draw color points
+      svg.selectAll('.color-point')
+        .data(points)
+        .join('circle')
+        .attr('class', 'color-point')
+        .attr('cx', d => d[0])
+        .attr('cy', d => d[1])
+        .attr('r', 3);
+
+      // Draw labels (hidden by default, shown on hover)
+      svg.selectAll('.color-label')
+        .data(points)
+        .join('text')
+        .attr('class', 'color-label')
+        .attr('x', d => d[0])
+        .attr('y', d => d[1] - 8)
+        .text(d => d[2].name);
     }
 
     // Show color information
     function showColorInfo(color) {
-      const rgb = hexToRgb(color.hex);
-      const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+      const pos = positionColor(color);
 
       document.getElementById('color-name').textContent = color.name;
       document.getElementById('color-hex').textContent = color.hex;
       document.getElementById('color-rgb').textContent =
-        `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+        `rgb(${pos.rgb.r}, ${pos.rgb.g}, ${pos.rgb.b})`;
       document.getElementById('color-hsl').textContent =
-        `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+        `hsl(${pos.hsl.h}, ${pos.hsl.s}%, ${pos.hsl.l}%)`;
       document.getElementById('color-swatch').style.backgroundColor = color.hex;
 
       infoPanelEl.classList.add('visible');
     }
 
-    // Render legend
-    function renderLegend() {
-      const legendGrid = document.getElementById('legend-grid');
-      const families = {};
+    // Controls
+    document.getElementById('show-points').addEventListener('change', (e) => {
+      svg.selectAll('.color-point').style('opacity', e.target.checked ? 1 : 0);
+    });
 
-      COLORS.forEach(color => {
-        if (!families[color.family]) {
-          families[color.family] = color.hex;
-        }
-      });
+    document.getElementById('show-boundaries').addEventListener('change', (e) => {
+      svg.selectAll('.voronoi-cell').style('opacity', e.target.checked ? 1 : 0);
+    });
 
-      Object.entries(families).forEach(([family, hex]) => {
-        const item = document.createElement('div');
-        item.className = 'legend-item';
-        item.innerHTML = `
-          <div class="legend-color" style="background-color: ${hex}"></div>
-          <span>${family}</span>
-        `;
-        legendGrid.appendChild(item);
-      });
-    }
+    document.getElementById('show-labels').addEventListener('change', (e) => {
+      svg.selectAll('.color-label').style('opacity', e.target.checked ? 1 : 0);
+    });
 
     // Click outside to unpin
     document.addEventListener('click', (e) => {
-      if (!infoPanelEl.contains(e.target) && !e.target.classList.contains('color-region')) {
+      if (!infoPanelEl.contains(e.target)) {
         isPinned = false;
         infoPanelEl.classList.remove('visible');
       }
     });
 
     // Initialize
-    renderColorMap();
-    renderLegend();
+    drawSpectrum();
+    createVoronoi();
   </script>
 </body>
 </html>
