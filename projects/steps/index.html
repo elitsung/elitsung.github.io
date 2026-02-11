@@ -642,19 +642,6 @@
               borderDash: [5, 5],
               tension: 0.1,
               fill: false
-            },
-            {
-              label: 'Daily Steps',
-              data: dailySteps,
-              borderColor: 'rgba(0, 0, 0, 0)', // Transparent
-              backgroundColor: 'rgba(0, 0, 0, 0)', // Transparent
-              borderWidth: 0,
-              pointRadius: 0,
-              pointHoverRadius: 0,
-              tension: 0.1,
-              fill: false,
-              hidden: false, // Keep it active for tooltip but invisible
-              yAxisID: 'y1' // Use separate hidden y-axis
             }
           ]
         },
@@ -672,10 +659,6 @@
               labels: {
                 font: {
                   family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
-                },
-                filter: function(legendItem, chartData) {
-                  // Hide "Daily Steps" from legend
-                  return legendItem.text !== 'Daily Steps';
                 }
               }
             },
@@ -688,10 +671,6 @@
               }
             },
             tooltip: {
-              filter: function(tooltipItem) {
-                // Exclude Daily Steps dataset from tooltip
-                return tooltipItem.dataset.label !== 'Daily Steps';
-              },
               callbacks: {
                 title: function(context) {
                   // Get the formatted date label
@@ -717,10 +696,6 @@
                   family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
                 }
               }
-            },
-            y1: {
-              display: false, // Hidden axis for daily steps
-              beginAtZero: true
             },
             x: {
               ticks: {
