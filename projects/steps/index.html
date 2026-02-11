@@ -672,6 +672,10 @@
               labels: {
                 font: {
                   family: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+                },
+                filter: function(legendItem, chartData) {
+                  // Hide "Daily Steps" from legend
+                  return legendItem.text !== 'Daily Steps';
                 }
               }
             },
@@ -684,11 +688,20 @@
               }
             },
             tooltip: {
+              filter: function(tooltipItem) {
+                // Exclude Daily Steps dataset from tooltip
+                return tooltipItem.dataset.label !== 'Daily Steps';
+              },
               callbacks: {
                 title: function(context) {
                   // Get the formatted date label
                   const index = context[0].dataIndex;
                   return fullDateLabels[index];
+                },
+                afterTitle: function(context) {
+                  // Add daily steps to the tooltip title
+                  const index = context[0].dataIndex;
+                  return `Daily: ${dailySteps[index].toLocaleString()} steps`;
                 }
               }
             }
