@@ -607,15 +607,15 @@
           deltaArrow = todayAboveGoal ? '↓' : '↑';
           deltaClass = todayAboveGoal ? 'positive' : 'negative';
           tooltipText = todayAboveGoal ?
-            `Today reduced deficit by ${Math.abs(todayDelta).toLocaleString()} steps` :
-            `Today increased deficit by ${Math.abs(todayDelta).toLocaleString()} steps`;
+            `Deficit reduced by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday` :
+            `Deficit increased by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday`;
         } else {
           // In surplus: above goal increases surplus (↑ good), below goal decreases it (↓ bad)
           deltaArrow = todayAboveGoal ? '↑' : '↓';
           deltaClass = todayAboveGoal ? 'positive' : 'negative';
           tooltipText = todayAboveGoal ?
-            `Today increased surplus by ${Math.abs(todayDelta).toLocaleString()} steps` :
-            `Today reduced surplus by ${Math.abs(todayDelta).toLocaleString()} steps`;
+            `Surplus increased by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday` :
+            `Surplus reduced by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday`;
         }
 
         const deltaValue = Math.abs(todayDelta).toLocaleString();
