@@ -40,6 +40,18 @@
     .surplus {
       color: #28a745;
     }
+    .delta {
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+      font-weight: normal;
+      opacity: 0.85;
+    }
+    .delta.positive {
+      color: #28a745;
+    }
+    .delta.negative {
+      color: #dc3545;
+    }
     a {
       color: blue;
       text-decoration: underline;
@@ -558,6 +570,10 @@
       const monthDeficit = monthSteps - (DAILY_GOAL * daysInMonth);
       const weekDeficit = weekSteps - (DAILY_GOAL * daysInWeek);
 
+      // Calculate today's delta (most recent data point)
+      const sortedData = [...data].sort((a, b) => b.date - a.date);
+      const todayDelta = sortedData.length > 0 ? sortedData[0].steps - DAILY_GOAL : 0;
+
       // Get month name for display
       const monthName = now.toLocaleDateString('en-US', { month: 'long' });
 
@@ -567,12 +583,12 @@
       const weekRange = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
       // Display results
-      displayMetric('year-metric', 'Step Deficit in 2026', yearDeficit);
+      displayMetric('year-metric', 'Step Deficit in 2026', yearDeficit, null, todayDelta);
       displayMetric('month-metric', `Deficit in ${monthName}`, monthDeficit);
       displayMetric('week-metric', 'Deficit This Week', weekDeficit, weekRange);
     }
 
-    function displayMetric(elementId, label, value, subtitle = null) {
+    function displayMetric(elementId, label, value, subtitle = null, todayDelta = null) {
       const element = document.getElementById(elementId);
       const isDeficit = value < 0;
       const absValue = Math.abs(value).toLocaleString();
@@ -580,6 +596,32 @@
       const className = isDeficit ? 'deficit' : 'surplus';
 
       let html = `<span class="${className}">${label.replace('Deficit', status)}: ${absValue}</span>`;
+
+      // Add today's delta indicator
+      if (todayDelta !== null) {
+        const todayAboveGoal = todayDelta >= 0;
+        let deltaArrow, deltaClass, tooltipText;
+
+        if (isDeficit) {
+          // In deficit: above goal reduces deficit (↓ good), below goal increases it (↑ bad)
+          deltaArrow = todayAboveGoal ? '↓' : '↑';
+          deltaClass = todayAboveGoal ? 'positive' : 'negative';
+          tooltipText = todayAboveGoal ?
+            `Deficit reduced by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday` :
+            `Deficit increased by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday`;
+        } else {
+          // In surplus: above goal increases surplus (↑ good), below goal decreases it (↓ bad)
+          deltaArrow = todayAboveGoal ? '↑' : '↓';
+          deltaClass = todayAboveGoal ? 'positive' : 'negative';
+          tooltipText = todayAboveGoal ?
+            `Surplus increased by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday` :
+            `Surplus reduced by ${Math.abs(todayDelta).toLocaleString()} steps since yesterday`;
+        }
+
+        const deltaValue = Math.abs(todayDelta).toLocaleString();
+        html += `<span class="delta ${deltaClass}" title="${tooltipText}">today: ${deltaArrow}${deltaValue}</span>`;
+      }
+
       if (subtitle) {
         html += `<div class="week-subtitle">${subtitle}</div>`;
       }
