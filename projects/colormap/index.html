@@ -20,6 +20,7 @@
       line-height: 1.6;
       background-color: #fff;
       color: #111;
+      overflow: hidden;
     }
     header {
       max-width: 900px;
@@ -66,17 +67,28 @@
       width: calc(100% - 2rem);
     }
     #map-container {
-      max-width: 1400px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      position: relative;
+      position: fixed;
+      top: 100px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
     }
     #color-map-wrapper {
       position: relative;
       width: 100%;
-      height: 700px;
-      border: 1px solid rgba(0, 0, 0, 0.15);
+      height: 100%;
       overflow: hidden;
+      cursor: grab;
+    }
+    #color-map-wrapper.grabbing {
+      cursor: grabbing;
+    }
+    #viewport {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transition: transform 0.1s ease-out;
     }
     #color-spectrum {
       position: absolute;
@@ -160,18 +172,28 @@
       margin-bottom: 1rem;
     }
     #instructions {
-      max-width: 900px;
-      margin: 0 auto 2rem auto;
-      padding: 0 1rem;
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
       text-align: center;
       color: #666;
       font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 0.5rem 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      z-index: 100;
     }
     .controls {
-      max-width: 900px;
-      margin: 1rem auto;
-      padding: 0 1rem;
+      position: fixed;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
       text-align: center;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 0.5rem 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      z-index: 100;
     }
     .controls label {
       margin-left: 1rem;
@@ -204,8 +226,10 @@
 
   <div id="map-container">
     <div id="color-map-wrapper">
-      <canvas id="color-spectrum"></canvas>
-      <svg id="color-svg"></svg>
+      <div id="viewport">
+        <canvas id="color-spectrum"></canvas>
+        <svg id="color-svg"></svg>
+      </div>
     </div>
   </div>
 
@@ -230,15 +254,27 @@
   <script>
     const canvas = document.getElementById('color-spectrum');
     const svg = d3.select('#color-svg');
+    const viewport = document.getElementById('viewport');
+    const wrapper = document.getElementById('color-map-wrapper');
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
 
-    const width = document.getElementById('color-map-wrapper').clientWidth;
-    const height = document.getElementById('color-map-wrapper').clientHeight;
+    // Make canvas wider than viewport to allow wrapping
+    // Map hue from 120° to 480° so red (0°/360°) is in the center
+    const viewportWidth = wrapper.clientWidth;
+    const viewportHeight = wrapper.clientHeight;
+    const width = viewportWidth * 1.5; // Extend canvas width
+    const height = viewportHeight;
 
     canvas.width = width;
     canvas.height = height;
     svg.attr('width', width).attr('height', height);
+
+    // Panning state
+    let isPanning = false;
+    let startX = 0;
+    let currentX = -(width - viewportWidth) / 2; // Start centered on red
+    let translateX = currentX;
 
     // Convert hex to RGB
     function hexToRgb(hex) {
@@ -312,13 +348,19 @@
     }
 
     // Draw continuous color spectrum
+    // Map x from 0 to width to hue from 120° to 480° (wrapping)
+    // This puts red (0°/360°) in the center instead of at the edges
     function drawSpectrum() {
       const ctx = canvas.getContext('2d');
       const imageData = ctx.createImageData(width, height);
 
+      const hueStart = 120;
+      const hueRange = 360;
+
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          const hue = (x / width) * 360;
+          let hue = hueStart + (x / width) * hueRange;
+          hue = hue % 360; // Wrap around
           const lightness = 100 - (y / height) * 100;
           const saturation = 100;
 
@@ -340,7 +382,11 @@
       const rgb = hexToRgb(color.hex);
       const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-      const x = (hsl.h / 360) * width;
+      // Map hue to x position (accounting for hue offset)
+      const hueStart = 120;
+      let hueOffset = hsl.h - hueStart;
+      if (hueOffset < 0) hueOffset += 360;
+      const x = (hueOffset / 360) * width;
       const y = height - (hsl.l / 100) * height;
 
       return { x, y, hsl, rgb };
@@ -434,6 +480,39 @@
         infoPanelEl.classList.remove('visible');
       }
     });
+
+    // Panning controls
+    wrapper.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.voronoi-cell')) return; // Allow clicking on cells
+      isPanning = true;
+      startX = e.clientX;
+      wrapper.classList.add('grabbing');
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const dx = e.clientX - startX;
+      translateX = currentX + dx;
+
+      // Clamp panning
+      const minX = -(width - viewportWidth);
+      const maxX = 0;
+      translateX = Math.max(minX, Math.min(maxX, translateX));
+
+      viewport.style.transform = `translateX(${translateX}px)`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        currentX = translateX;
+        wrapper.classList.remove('grabbing');
+      }
+    });
+
+    // Update viewport position
+    viewport.style.transform = `translateX(${translateX}px)`;
 
     // Initialize
     drawSpectrum();
