@@ -599,8 +599,19 @@
 
       // Add today's delta indicator
       if (todayDelta !== null) {
-        const deltaClass = todayDelta >= 0 ? 'positive' : 'negative';
-        const deltaArrow = todayDelta >= 0 ? '↑' : '↓';
+        const todayAboveGoal = todayDelta >= 0;
+        let deltaArrow, deltaClass;
+
+        if (isDeficit) {
+          // In deficit: above goal reduces deficit (↓ good), below goal increases it (↑ bad)
+          deltaArrow = todayAboveGoal ? '↓' : '↑';
+          deltaClass = todayAboveGoal ? 'positive' : 'negative';
+        } else {
+          // In surplus: above goal increases surplus (↑ good), below goal decreases it (↓ bad)
+          deltaArrow = todayAboveGoal ? '↑' : '↓';
+          deltaClass = todayAboveGoal ? 'positive' : 'negative';
+        }
+
         const deltaValue = Math.abs(todayDelta).toLocaleString();
         html += `<span class="delta ${deltaClass}">today: ${deltaArrow}${deltaValue}</span>`;
       }
