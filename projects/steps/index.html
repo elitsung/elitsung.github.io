@@ -673,14 +673,11 @@
             tooltip: {
               callbacks: {
                 title: function(context) {
-                  // Get the formatted date label
+                  // Show date with daily steps count
                   const index = context[0].dataIndex;
-                  return fullDateLabels[index];
-                },
-                afterTitle: function(context) {
-                  // Add daily steps to the tooltip title
-                  const index = context[0].dataIndex;
-                  return `Daily: ${dailySteps[index].toLocaleString()} steps`;
+                  const monthAbbr = sortedData[index].date.toLocaleDateString('en-US', { month: 'short' });
+                  const day = sortedData[index].date.getDate();
+                  return `Steps on ${monthAbbr} ${day}: ${dailySteps[index].toLocaleString()}`;
                 }
               }
             }
