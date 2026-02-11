@@ -348,7 +348,14 @@
 
     // Create Voronoi diagram
     function createVoronoi() {
-      const points = COLORS.map(color => {
+      // Filter out low-saturation colors (grays, whites, blacks)
+      // These don't have meaningful hue positions
+      const saturatedColors = COLORS.filter(color => {
+        const pos = positionColor(color);
+        return pos.hsl.s > 15; // Only include colors with > 15% saturation
+      });
+
+      const points = saturatedColors.map(color => {
         const pos = positionColor(color);
         return [pos.x, pos.y, color];
       });
