@@ -205,7 +205,7 @@
 </head>
 <body>
   <div id="instructions">
-    Explore the continuous color spectrum. Hover over regions to see named shades and their boundaries.
+    Drag to pan • Scroll to zoom • Hover to explore • Click to pin
   </div>
 
   <div class="controls">
@@ -269,11 +269,14 @@
     canvas.height = height;
     svg.attr('width', width).attr('height', height);
 
-    // Panning state
+    // Panning and zoom state
     let isPanning = false;
     let startX = 0;
     let currentX = -(width - viewportWidth) / 2; // Start centered on red
     let translateX = currentX;
+    let scale = 1.0;
+    const minScale = 0.5;
+    const maxScale = 3.0;
 
     // Convert hex to RGB
     function hexToRgb(hex) {
@@ -415,14 +418,18 @@
         .attr('class', 'voronoi-cell')
         .attr('d', (d, i) => voronoi.renderCell(i))
         .on('mouseenter', function(event, d) {
-          if (!isPinned) {
+          if (!isPinned && !isPanning) {
             showColorInfo(d[2]);
           }
         })
         .on('click', function(event, d) {
-          event.stopPropagation();
-          isPinned = !isPinned;
-          showColorInfo(d[2]);
+          // Only trigger if this was a click, not a pan
+          const clickDuration = Date.now() - panStartTime;
+          if (clickDuration < 200) {
+            event.stopPropagation();
+            isPinned = !isPinned;
+            showColorInfo(d[2]);
+          }
         });
 
       // Draw color points
@@ -481,12 +488,13 @@
     });
 
     // Panning controls
+    let panStartTime = 0;
+
     wrapper.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.voronoi-cell')) return; // Allow clicking on cells
       isPanning = true;
       startX = e.clientX;
+      panStartTime = Date.now();
       wrapper.classList.add('grabbing');
-      e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -499,7 +507,7 @@
       const maxX = 0;
       translateX = Math.max(minX, Math.min(maxX, translateX));
 
-      viewport.style.transform = `translateX(${translateX}px)`;
+      updateViewport();
     });
 
     document.addEventListener('mouseup', () => {
@@ -510,8 +518,42 @@
       }
     });
 
-    // Update viewport position
-    viewport.style.transform = `translateX(${translateX}px)`;
+    // Zoom with mouse wheel
+    wrapper.addEventListener('wheel', (e) => {
+      e.preventDefault();
+
+      const delta = -e.deltaY * 0.001;
+      const newScale = Math.max(minScale, Math.min(maxScale, scale + delta));
+
+      if (newScale !== scale) {
+        // Zoom towards mouse position
+        const rect = wrapper.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const zoomPoint = (mouseX - translateX) / scale;
+
+        scale = newScale;
+        translateX = mouseX - zoomPoint * scale;
+        currentX = translateX;
+
+        // Clamp after zoom
+        const scaledWidth = width * scale;
+        const minX = Math.min(0, -(scaledWidth - viewportWidth));
+        const maxX = 0;
+        translateX = Math.max(minX, Math.min(maxX, translateX));
+        currentX = translateX;
+
+        updateViewport();
+      }
+    }, { passive: false });
+
+    // Update viewport transform
+    function updateViewport() {
+      viewport.style.transform = `translateX(${translateX}px) scale(${scale})`;
+      viewport.style.transformOrigin = '0 0';
+    }
+
+    // Initialize viewport position
+    updateViewport();
 
     // Initialize
     drawSpectrum();
