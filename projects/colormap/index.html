@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Color Density Map</title>
+  <title>Color Density Map - Hue × Lightness</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
@@ -71,8 +71,6 @@
       stroke-width: 2;
     }
     .color-point {
-      fill: #111;
-      stroke: #fff;
       stroke-width: 1.5;
       pointer-events: none;
     }
@@ -202,7 +200,7 @@
         <canvas id="color-gradient"></canvas>
         <svg id="color-svg"></svg>
         <div class="axis-label x-axis">Hue (0° - 360°)</div>
-        <div class="axis-label y-axis">Saturation (0% - 100%)</div>
+        <div class="axis-label y-axis">Lightness (0% - 100%)</div>
       </div>
     </div>
   </div>
@@ -311,17 +309,17 @@
       };
     }
 
-    // Draw hue × saturation gradient background
+    // Draw hue × lightness gradient background
     function drawColorGradient() {
       const ctx = canvas.getContext('2d');
       const imageData = ctx.createImageData(width, height);
 
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-          // Map x to hue (0-360°), y to saturation (100% at top, 0% at bottom)
+          // Map x to hue (0-360°), y to lightness (100% at top, 0% at bottom)
           const hue = (x / width) * 360;
-          const saturation = ((height - y) / height) * 100;
-          const lightness = 50; // Fixed lightness for vibrant colors
+          const lightness = ((height - y) / height) * 100;
+          const saturation = 100; // Fixed saturation for vibrant colors
 
           const rgb = hslToRgb(hue, saturation, lightness);
           const index = (y * width + x) * 4;
@@ -343,22 +341,16 @@
 
       // Map hue to x (0-360° → 0-width)
       const x = (hsl.h / 360) * width;
-      // Map saturation to y (100% at top, 0% at bottom)
-      const y = height - (hsl.s / 100) * height;
+      // Map lightness to y (100% at top, 0% at bottom)
+      const y = height - (hsl.l / 100) * height;
 
       return { x, y, hsl, rgb };
     }
 
     // Create Voronoi diagram for interaction
     function createVoronoi() {
-      // Filter out very low-saturation colors (pure grays) as they don't have meaningful hue
-      const saturatedColors = COLORS.filter(color => {
-        const pos = positionColor(color);
-        return pos.hsl.s > 5; // Only include colors with > 5% saturation
-      });
-
-      // Create points for Voronoi
-      const points = saturatedColors.map(color => {
+      // Create points for all colors (no filtering needed for H×L layout)
+      const points = COLORS.map(color => {
         const pos = positionColor(color);
         return [pos.x, pos.y, color];
       });
@@ -384,23 +376,40 @@
           showColorInfo(d[2]);
         });
 
-      // Draw color points (dots)
+      // Draw color points (dots) with adaptive colors based on lightness
       svg.selectAll('.color-point')
         .data(points)
         .join('circle')
         .attr('class', 'color-point')
         .attr('cx', d => d[0])
         .attr('cy', d => d[1])
-        .attr('r', 3);
+        .attr('r', 3)
+        .style('fill', d => {
+          const pos = positionColor(d[2]);
+          return pos.hsl.l < 50 ? '#fff' : '#111';
+        })
+        .style('stroke', d => {
+          const pos = positionColor(d[2]);
+          return pos.hsl.l < 50 ? '#111' : '#fff';
+        });
 
-      // Draw labels (hidden by default, shown on hover)
+      // Draw labels (hidden by default, shown on hover) with adaptive colors
       svg.selectAll('.color-label')
         .data(points)
         .join('text')
         .attr('class', 'color-label')
         .attr('x', d => d[0])
         .attr('y', d => d[1] - 8)
-        .text(d => d[2].name);
+        .text(d => d[2].name)
+        .style('fill', d => {
+          const pos = positionColor(d[2]);
+          return pos.hsl.l < 50 ? '#fff' : '#111';
+        })
+        .style('text-shadow', d => {
+          const pos = positionColor(d[2]);
+          const shadowColor = pos.hsl.l < 50 ? '#111' : '#fff';
+          return `0 0 3px ${shadowColor}, 0 0 3px ${shadowColor}, 0 0 3px ${shadowColor}`;
+        });
     }
 
     // Show color information
