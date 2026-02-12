@@ -258,11 +258,11 @@
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
 
-    // Render 5 copies of the spectrum for seamless infinite wrapping
+    // Render 3 copies of the spectrum for seamless infinite wrapping
     const viewportWidth = wrapper.clientWidth;
     const viewportHeight = wrapper.clientHeight;
     const spectrumWidth = viewportWidth; // Width of one spectrum copy
-    const numCopies = 5;
+    const numCopies = 3;
     const width = spectrumWidth * numCopies;
     const height = viewportHeight;
 
@@ -274,10 +274,8 @@
     let isPanning = false;
     let startX = 0;
     let startY = 0;
-    let currentX = -spectrumWidth * 2; // Start at center copy
-    let currentY = 0; // Start at top
-    let translateX = currentX;
-    let translateY = currentY;
+    let offsetX = 0; // Infinite scrolling offset
+    let offsetY = 0;
     let scale = 1.0;
     const maxScale = 3.0;
 
@@ -507,27 +505,20 @@
       if (!isPanning) return;
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      translateX = currentX + dx;
-      translateY = currentY + dy;
 
-      // Horizontal wrapping - keep viewport centered on middle copies
-      const scaledSpectrumWidth = spectrumWidth * scale;
-      while (translateX > -scaledSpectrumWidth * 1.5) {
-        // Wrapped too far right, jump left
-        translateX -= scaledSpectrumWidth;
-        currentX -= scaledSpectrumWidth;
-      }
-      while (translateX < -scaledSpectrumWidth * 2.5) {
-        // Wrapped too far left, jump right
-        translateX += scaledSpectrumWidth;
-        currentX += scaledSpectrumWidth;
-      }
+      // Update infinite scrolling offsets
+      offsetX += dx;
+      offsetY += dy;
+
+      // Reset start positions for continuous panning
+      startX = e.clientX;
+      startY = e.clientY;
 
       // Vertical clamping - prevent panning beyond canvas edges
       const scaledHeight = height * scale;
       const minY = Math.min(0, -(scaledHeight - viewportHeight));
       const maxY = 0;
-      translateY = Math.max(minY, Math.min(maxY, translateY));
+      offsetY = Math.max(minY, Math.min(maxY, offsetY));
 
       updateViewport();
     });
@@ -535,8 +526,6 @@
     document.addEventListener('mouseup', () => {
       if (isPanning) {
         isPanning = false;
-        currentX = translateX;
-        currentY = translateY;
         wrapper.classList.remove('grabbing');
       }
     });
@@ -555,40 +544,35 @@
         const rect = wrapper.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        const zoomPointX = (mouseX - translateX) / scale;
-        const zoomPointY = (mouseY - translateY) / scale;
 
-        scale = newScale;
-        translateX = mouseX - zoomPointX * scale;
-        translateY = mouseY - zoomPointY * scale;
-        currentX = translateX;
-        currentY = translateY;
-
-        // Horizontal wrapping after zoom
+        // Calculate zoom point in content space
         const scaledSpectrumWidth = spectrumWidth * scale;
-        while (translateX > -scaledSpectrumWidth * 1.5) {
-          translateX -= scaledSpectrumWidth;
-          currentX -= scaledSpectrumWidth;
-        }
-        while (translateX < -scaledSpectrumWidth * 2.5) {
-          translateX += scaledSpectrumWidth;
-          currentX += scaledSpectrumWidth;
-        }
+        const wrappedOffsetX = ((offsetX % scaledSpectrumWidth) + scaledSpectrumWidth) % scaledSpectrumWidth;
+        const zoomPointX = (mouseX - wrappedOffsetX) / scale;
+        const zoomPointY = (mouseY - offsetY) / scale;
+
+        // Update scale and adjust offsets to zoom towards mouse
+        const oldScale = scale;
+        scale = newScale;
+        offsetX += (mouseX - wrappedOffsetX) - zoomPointX * scale;
+        offsetY += (mouseY - offsetY) - zoomPointY * scale;
 
         // Vertical clamping after zoom
         const scaledHeight = height * scale;
         const minY = Math.min(0, -(scaledHeight - viewportHeight));
         const maxY = 0;
-        translateY = Math.max(minY, Math.min(maxY, translateY));
-        currentY = translateY;
+        offsetY = Math.max(minY, Math.min(maxY, offsetY));
 
         updateViewport();
       }
     }, { passive: false });
 
-    // Update viewport transform
+    // Update viewport transform with seamless wrapping
     function updateViewport() {
-      viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      const scaledSpectrumWidth = spectrumWidth * scale;
+      // Use modulo to wrap horizontally (always showing middle copy)
+      const wrappedX = ((offsetX % scaledSpectrumWidth) + scaledSpectrumWidth) % scaledSpectrumWidth - scaledSpectrumWidth;
+      viewport.style.transform = `translate(${wrappedX}px, ${offsetY}px) scale(${scale})`;
       viewport.style.transformOrigin = '0 0';
     }
 
