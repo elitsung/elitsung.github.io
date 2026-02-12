@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Color Map Explorer</title>
+  <title>Color Wheel Explorer</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
@@ -73,36 +73,35 @@
       right: 0;
       bottom: 0;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #color-map-wrapper {
       position: relative;
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      cursor: grab;
-    }
-    #color-map-wrapper.grabbing {
-      cursor: grabbing;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     #viewport {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      transition: transform 0.1s ease-out;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    #color-spectrum {
-      position: absolute;
-      top: 0;
-      left: 0;
+    #color-wheel {
       display: block;
     }
     #color-svg {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       cursor: crosshair;
       display: block;
+      pointer-events: none;
     }
     .voronoi-cell {
       fill: none;
@@ -205,7 +204,7 @@
 </head>
 <body>
   <div id="instructions">
-    Drag to pan • Scroll to zoom • Hover to explore • Click to pin
+    Hover to explore • Click to pin
   </div>
 
   <div class="controls">
@@ -226,7 +225,7 @@
   <div id="map-container">
     <div id="color-map-wrapper">
       <div id="viewport">
-        <canvas id="color-spectrum"></canvas>
+        <canvas id="color-wheel"></canvas>
         <svg id="color-svg"></svg>
       </div>
     </div>
@@ -251,33 +250,24 @@
 
   <script src="colors.js"></script>
   <script>
-    const canvas = document.getElementById('color-spectrum');
+    const canvas = document.getElementById('color-wheel');
     const svg = d3.select('#color-svg');
     const viewport = document.getElementById('viewport');
     const wrapper = document.getElementById('color-map-wrapper');
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
 
-    // Render 3 copies of the spectrum for seamless infinite wrapping
+    // Size the color wheel to fit the viewport with some margin
     const viewportWidth = wrapper.clientWidth;
     const viewportHeight = wrapper.clientHeight;
-    const spectrumWidth = viewportWidth; // Width of one spectrum copy
-    const numCopies = 3;
-    const width = spectrumWidth * numCopies;
-    const height = viewportHeight;
+    const wheelSize = Math.min(viewportWidth, viewportHeight) * 0.85;
+    const radius = wheelSize / 2;
+    const centerX = radius;
+    const centerY = radius;
 
-    canvas.width = width;
-    canvas.height = height;
-    svg.attr('width', width).attr('height', height);
-
-    // Panning and zoom state
-    let isPanning = false;
-    let startX = 0;
-    let startY = 0;
-    let offsetX = 0; // Infinite scrolling offset
-    let offsetY = 0;
-    let scale = 1.0;
-    const maxScale = 3.0;
+    canvas.width = wheelSize;
+    canvas.height = wheelSize;
+    svg.attr('width', wheelSize).attr('height', wheelSize);
 
     // Convert hex to RGB
     function hexToRgb(hex) {
@@ -350,69 +340,76 @@
       };
     }
 
-    // Draw continuous color spectrum (5 copies for seamless wrapping)
-    // Each copy shows full hue range, offset so center copy shows red in middle
-    function drawSpectrum() {
+    // Draw color wheel with hue around the circle and saturation as radius
+    function drawColorWheel() {
       const ctx = canvas.getContext('2d');
-      const imageData = ctx.createImageData(width, height);
+      const imageData = ctx.createImageData(wheelSize, wheelSize);
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          // Map x position to hue (0-360°), offset by 120° so red is centered
-          const hue = ((x / spectrumWidth) * 360 + 120) % 360;
-          const lightness = 100 - (y / height) * 100;
-          const saturation = 100;
+      for (let y = 0; y < wheelSize; y++) {
+        for (let x = 0; x < wheelSize; x++) {
+          const dx = x - centerX;
+          const dy = y - centerY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
 
-          const rgb = hslToRgb(hue, saturation, lightness);
-          const index = (y * width + x) * 4;
+          // Only draw within the circle
+          if (distance <= radius) {
+            // Calculate angle (hue) and distance (saturation)
+            const angle = Math.atan2(dy, dx);
+            const hue = ((angle * 180 / Math.PI) + 360) % 360;
+            const saturation = (distance / radius) * 100;
+            const lightness = 50; // Fixed lightness for vibrant colors
 
-          imageData.data[index] = rgb.r;
-          imageData.data[index + 1] = rgb.g;
-          imageData.data[index + 2] = rgb.b;
-          imageData.data[index + 3] = 255;
+            const rgb = hslToRgb(hue, saturation, lightness);
+            const index = (y * wheelSize + x) * 4;
+
+            imageData.data[index] = rgb.r;
+            imageData.data[index + 1] = rgb.g;
+            imageData.data[index + 2] = rgb.b;
+            imageData.data[index + 3] = 255;
+          } else {
+            // Transparent outside the circle
+            const index = (y * wheelSize + x) * 4;
+            imageData.data[index + 3] = 0;
+          }
         }
       }
 
       ctx.putImageData(imageData, 0, 0);
     }
 
-    // Position colors on the map using HSL coordinates
-    // Returns positions for all 3 copies of the spectrum
-    function positionColor(color, copyIndex = 1) {
+    // Position colors on the wheel using polar coordinates from HSL
+    function positionColor(color) {
       const rgb = hexToRgb(color.hex);
       const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-      // Map hue to x position (accounting for hue offset)
-      const hueStart = 120;
-      let hueOffset = hsl.h - hueStart;
-      if (hueOffset < 0) hueOffset += 360;
-      const baseX = (hueOffset / 360) * spectrumWidth;
-      const x = baseX + (copyIndex * spectrumWidth);
-      const y = height - (hsl.l / 100) * height;
+      // Convert HSL to polar coordinates
+      // Hue -> angle, Saturation -> distance from center
+      const angle = (hsl.h * Math.PI / 180);
+      const distance = (hsl.s / 100) * radius;
+
+      const x = centerX + distance * Math.cos(angle);
+      const y = centerY + distance * Math.sin(angle);
 
       return { x, y, hsl, rgb };
     }
 
     // Create Voronoi diagram
     function createVoronoi() {
-      // Filter out low-saturation colors (grays, whites, blacks)
-      // These don't have meaningful hue positions
+      // Filter out low-saturation colors (grays)
       const saturatedColors = COLORS.filter(color => {
-        const pos = positionColor(color, 0);
+        const pos = positionColor(color);
         return pos.hsl.s > 15; // Only include colors with > 15% saturation
       });
 
-      // Create points for all copies of the spectrum
-      const points = [];
-      for (let copy = 0; copy < numCopies; copy++) {
-        saturatedColors.forEach(color => {
-          const pos = positionColor(color, copy);
-          points.push([pos.x, pos.y, color]);
-        });
-      }
+      // Create points for Voronoi
+      const points = saturatedColors.map(color => {
+        const pos = positionColor(color);
+        return [pos.x, pos.y, color];
+      });
 
+      // Create Voronoi diagram clipped to circle
       const delaunay = d3.Delaunay.from(points, d => d[0], d => d[1]);
-      const voronoi = delaunay.voronoi([0, 0, width, height]);
+      const voronoi = delaunay.voronoi([0, 0, wheelSize, wheelSize]);
 
       // Draw Voronoi cells
       const cells = svg.selectAll('.voronoi-cell')
@@ -421,18 +418,14 @@
         .attr('class', 'voronoi-cell')
         .attr('d', (d, i) => voronoi.renderCell(i))
         .on('mouseenter', function(event, d) {
-          if (!isPinned && !isPanning) {
+          if (!isPinned) {
             showColorInfo(d[2]);
           }
         })
         .on('click', function(event, d) {
-          // Only trigger if this was a click, not a pan
-          const clickDuration = Date.now() - panStartTime;
-          if (clickDuration < 200) {
-            event.stopPropagation();
-            isPinned = !isPinned;
-            showColorInfo(d[2]);
-          }
+          event.stopPropagation();
+          isPinned = !isPinned;
+          showColorInfo(d[2]);
         });
 
       // Draw color points
@@ -490,97 +483,8 @@
       }
     });
 
-    // Panning controls
-    let panStartTime = 0;
-
-    wrapper.addEventListener('mousedown', (e) => {
-      isPanning = true;
-      startX = e.clientX;
-      startY = e.clientY;
-      panStartTime = Date.now();
-      wrapper.classList.add('grabbing');
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isPanning) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-
-      // Update infinite scrolling offsets
-      offsetX += dx;
-      offsetY += dy;
-
-      // Reset start positions for continuous panning
-      startX = e.clientX;
-      startY = e.clientY;
-
-      // Vertical clamping - prevent panning beyond canvas edges
-      const scaledHeight = height * scale;
-      const minY = Math.min(0, -(scaledHeight - viewportHeight));
-      const maxY = 0;
-      offsetY = Math.max(minY, Math.min(maxY, offsetY));
-
-      updateViewport();
-    });
-
-    document.addEventListener('mouseup', () => {
-      if (isPanning) {
-        isPanning = false;
-        wrapper.classList.remove('grabbing');
-      }
-    });
-
-    // Zoom with mouse wheel
-    wrapper.addEventListener('wheel', (e) => {
-      e.preventDefault();
-
-      const delta = -e.deltaY * 0.001;
-      // Minimum scale ensures spectrum always fills viewport
-      const minScale = viewportWidth / spectrumWidth;
-      const newScale = Math.max(minScale, Math.min(maxScale, scale + delta));
-
-      if (newScale !== scale) {
-        // Zoom towards mouse position
-        const rect = wrapper.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // Calculate zoom point in content space
-        const scaledSpectrumWidth = spectrumWidth * scale;
-        const wrappedOffsetX = ((offsetX % scaledSpectrumWidth) + scaledSpectrumWidth) % scaledSpectrumWidth;
-        const zoomPointX = (mouseX - wrappedOffsetX) / scale;
-        const zoomPointY = (mouseY - offsetY) / scale;
-
-        // Update scale and adjust offsets to zoom towards mouse
-        const oldScale = scale;
-        scale = newScale;
-        offsetX += (mouseX - wrappedOffsetX) - zoomPointX * scale;
-        offsetY += (mouseY - offsetY) - zoomPointY * scale;
-
-        // Vertical clamping after zoom
-        const scaledHeight = height * scale;
-        const minY = Math.min(0, -(scaledHeight - viewportHeight));
-        const maxY = 0;
-        offsetY = Math.max(minY, Math.min(maxY, offsetY));
-
-        updateViewport();
-      }
-    }, { passive: false });
-
-    // Update viewport transform with seamless wrapping
-    function updateViewport() {
-      const scaledSpectrumWidth = spectrumWidth * scale;
-      // Use modulo to wrap horizontally (always showing middle copy)
-      const wrappedX = ((offsetX % scaledSpectrumWidth) + scaledSpectrumWidth) % scaledSpectrumWidth - scaledSpectrumWidth;
-      viewport.style.transform = `translate(${wrappedX}px, ${offsetY}px) scale(${scale})`;
-      viewport.style.transformOrigin = '0 0';
-    }
-
-    // Initialize viewport position
-    updateViewport();
-
     // Initialize
-    drawSpectrum();
+    drawColorWheel();
     createVoronoi();
   </script>
 </body>
