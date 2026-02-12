@@ -415,14 +415,18 @@
         .attr('class', 'voronoi-cell')
         .attr('d', (d, i) => voronoi.renderCell(i))
         .on('mouseenter', function(event, d) {
-          if (!isPinned) {
+          if (!isPinned && !isPanning) {
             showColorInfo(d[2]);
           }
         })
         .on('click', function(event, d) {
-          event.stopPropagation();
-          isPinned = !isPinned;
-          showColorInfo(d[2]);
+          // Only trigger if this was a click, not a pan
+          const clickDuration = Date.now() - panStartTime;
+          if (clickDuration < 200) {
+            event.stopPropagation();
+            isPinned = !isPinned;
+            showColorInfo(d[2]);
+          }
         });
 
       // Draw color points
@@ -481,12 +485,13 @@
     });
 
     // Panning controls
+    let panStartTime = 0;
+
     wrapper.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.voronoi-cell')) return; // Allow clicking on cells
       isPanning = true;
       startX = e.clientX;
+      panStartTime = Date.now();
       wrapper.classList.add('grabbing');
-      e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
