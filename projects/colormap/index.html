@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Color Wheel Explorer</title>
+  <title>Color Density Map</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://d3js.org/d3-delaunay.v6.min.js"></script>
@@ -22,50 +22,6 @@
       color: #111;
       overflow: hidden;
     }
-    header {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem 1rem 0 1rem;
-    }
-    header h1 {
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-    header h1 a {
-      color: blue;
-      text-decoration: underline;
-      font-style: normal;
-      transition: font-style 0.1s ease;
-    }
-    header h1 a:hover {
-      display: inline-block;
-      font-style: italic;
-      text-decoration: underline;
-      animation: wiggle 0.3s ease-in-out infinite;
-    }
-    .nav-inline {
-      text-align: left;
-      margin-top: 0.5rem;
-      font-size: 1rem;
-      letter-spacing: 0.3px;
-      color: blue;
-    }
-    .nav-inline a {
-      text-decoration: underline;
-      color: blue;
-    }
-    .nav-inline a:hover {
-      display: inline-block;
-      font-style: italic;
-      animation: wiggle 0.3s ease-in-out infinite;
-    }
-    .page-divider {
-      border: none;
-      border-top: 1px solid rgba(0, 0, 0, 0.15);
-      margin: 1.5rem auto 2rem auto;
-      max-width: 900px;
-      width: calc(100% - 2rem);
-    }
     #map-container {
       position: fixed;
       top: 100px;
@@ -76,43 +32,43 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 2rem;
     }
     #color-map-wrapper {
       position: relative;
       width: 100%;
+      max-width: 1400px;
       height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      max-height: 500px;
     }
     #viewport {
       position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 100%;
+      height: 100%;
     }
-    #color-wheel {
+    #color-gradient {
       display: block;
+      width: 100%;
+      height: 100%;
     }
     #color-svg {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       cursor: crosshair;
       display: block;
       pointer-events: none;
     }
     .voronoi-cell {
       fill: none;
-      stroke: rgba(0, 0, 0, 0.2);
-      stroke-width: 1.5;
+      stroke: none;
       pointer-events: all;
-      transition: stroke 0.2s ease;
     }
     .voronoi-cell:hover {
       stroke: #111;
-      stroke-width: 2.5;
+      stroke-width: 2;
     }
     .color-point {
       fill: #111;
@@ -200,11 +156,29 @@
     .controls input[type="checkbox"] {
       cursor: pointer;
     }
+    .axis-label {
+      position: absolute;
+      font-size: 0.85rem;
+      color: #666;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.25rem 0.5rem;
+      border-radius: 2px;
+    }
+    .axis-label.x-axis {
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .axis-label.y-axis {
+      left: -80px;
+      top: 50%;
+      transform: translateY(-50%) rotate(-90deg);
+    }
   </style>
 </head>
 <body>
   <div id="instructions">
-    Hover to explore • Click to pin
+    Hover to explore • Click to pin • Dots show named colors
   </div>
 
   <div class="controls">
@@ -213,7 +187,7 @@
       Show color points
     </label>
     <label>
-      <input type="checkbox" id="show-boundaries" checked>
+      <input type="checkbox" id="show-boundaries">
       Show boundaries
     </label>
     <label>
@@ -225,8 +199,10 @@
   <div id="map-container">
     <div id="color-map-wrapper">
       <div id="viewport">
-        <canvas id="color-wheel"></canvas>
+        <canvas id="color-gradient"></canvas>
         <svg id="color-svg"></svg>
+        <div class="axis-label x-axis">Hue (0° - 360°)</div>
+        <div class="axis-label y-axis">Saturation (0% - 100%)</div>
       </div>
     </div>
   </div>
@@ -250,24 +226,19 @@
 
   <script src="colors.js"></script>
   <script>
-    const canvas = document.getElementById('color-wheel');
+    const canvas = document.getElementById('color-gradient');
     const svg = d3.select('#color-svg');
     const viewport = document.getElementById('viewport');
     const wrapper = document.getElementById('color-map-wrapper');
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
 
-    // Size the color wheel to fit the viewport with some margin
-    const viewportWidth = wrapper.clientWidth;
-    const viewportHeight = wrapper.clientHeight;
-    const wheelSize = Math.min(viewportWidth, viewportHeight) * 0.85;
-    const radius = wheelSize / 2;
-    const centerX = radius;
-    const centerY = radius;
-
-    canvas.width = wheelSize;
-    canvas.height = wheelSize;
-    svg.attr('width', wheelSize).attr('height', wheelSize);
+    // Set canvas dimensions
+    const width = wrapper.clientWidth;
+    const height = wrapper.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+    svg.attr('width', width).attr('height', height);
 
     // Convert hex to RGB
     function hexToRgb(hex) {
@@ -340,61 +311,50 @@
       };
     }
 
-    // Draw color wheel with hue around the circle and saturation as radius
-    function drawColorWheel() {
+    // Draw hue × saturation gradient background
+    function drawColorGradient() {
       const ctx = canvas.getContext('2d');
+      const imageData = ctx.createImageData(width, height);
 
-      // Draw the wheel using radial slices for better performance
-      const segments = 360; // One per degree
-      const angleStep = (Math.PI * 2) / segments;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          // Map x to hue (0-360°), y to saturation (100% at top, 0% at bottom)
+          const hue = (x / width) * 360;
+          const saturation = ((height - y) / height) * 100;
+          const lightness = 50; // Fixed lightness for vibrant colors
 
-      for (let i = 0; i < segments; i++) {
-        const startAngle = i * angleStep;
-        const endAngle = (i + 1) * angleStep;
-        const hue = (i + 90) % 360; // Offset by 90 so red is at top
+          const rgb = hslToRgb(hue, saturation, lightness);
+          const index = (y * width + x) * 4;
 
-        // Draw a gradient from center (low saturation) to edge (high saturation)
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-
-        // Center: desaturated (white)
-        const centerColor = hslToRgb(hue, 0, 50);
-        gradient.addColorStop(0, `rgb(${centerColor.r}, ${centerColor.g}, ${centerColor.b})`);
-
-        // Edge: fully saturated
-        const edgeColor = hslToRgb(hue, 100, 50);
-        gradient.addColorStop(1, `rgb(${edgeColor.r}, ${edgeColor.g}, ${edgeColor.b})`);
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fill();
+          imageData.data[index] = rgb.r;
+          imageData.data[index + 1] = rgb.g;
+          imageData.data[index + 2] = rgb.b;
+          imageData.data[index + 3] = 255;
+        }
       }
+
+      ctx.putImageData(imageData, 0, 0);
     }
 
-    // Position colors on the wheel using polar coordinates from HSL
+    // Position colors on the gradient using HSL coordinates
     function positionColor(color) {
       const rgb = hexToRgb(color.hex);
       const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-      // Convert HSL to polar coordinates
-      // Hue -> angle, Saturation -> distance from center
-      const angle = (hsl.h * Math.PI / 180);
-      const distance = (hsl.s / 100) * radius;
-
-      const x = centerX + distance * Math.cos(angle);
-      const y = centerY + distance * Math.sin(angle);
+      // Map hue to x (0-360° → 0-width)
+      const x = (hsl.h / 360) * width;
+      // Map saturation to y (100% at top, 0% at bottom)
+      const y = height - (hsl.s / 100) * height;
 
       return { x, y, hsl, rgb };
     }
 
-    // Create Voronoi diagram
+    // Create Voronoi diagram for interaction
     function createVoronoi() {
-      // Filter out low-saturation colors (grays)
+      // Filter out very low-saturation colors (pure grays) as they don't have meaningful hue
       const saturatedColors = COLORS.filter(color => {
         const pos = positionColor(color);
-        return pos.hsl.s > 15; // Only include colors with > 15% saturation
+        return pos.hsl.s > 5; // Only include colors with > 5% saturation
       });
 
       // Create points for Voronoi
@@ -403,11 +363,11 @@
         return [pos.x, pos.y, color];
       });
 
-      // Create Voronoi diagram clipped to circle
+      // Create Voronoi diagram
       const delaunay = d3.Delaunay.from(points, d => d[0], d => d[1]);
-      const voronoi = delaunay.voronoi([0, 0, wheelSize, wheelSize]);
+      const voronoi = delaunay.voronoi([0, 0, width, height]);
 
-      // Draw Voronoi cells
+      // Draw Voronoi cells (invisible by default, for interaction only)
       const cells = svg.selectAll('.voronoi-cell')
         .data(points)
         .join('path')
@@ -424,7 +384,7 @@
           showColorInfo(d[2]);
         });
 
-      // Draw color points
+      // Draw color points (dots)
       svg.selectAll('.color-point')
         .data(points)
         .join('circle')
@@ -464,7 +424,7 @@
     });
 
     document.getElementById('show-boundaries').addEventListener('change', (e) => {
-      svg.selectAll('.voronoi-cell').style('opacity', e.target.checked ? 1 : 0);
+      svg.selectAll('.voronoi-cell').style('stroke', e.target.checked ? 'rgba(0, 0, 0, 0.2)' : 'none');
     });
 
     document.getElementById('show-labels').addEventListener('change', (e) => {
@@ -480,7 +440,7 @@
     });
 
     // Initialize
-    drawColorWheel();
+    drawColorGradient();
     createVoronoi();
   </script>
 </body>
