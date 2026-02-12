@@ -258,11 +258,12 @@
     const infoPanelEl = document.getElementById('info-panel');
     let isPinned = false;
 
-    // Render 3 copies of the spectrum for infinite wrapping
+    // Render 5 copies of the spectrum for seamless infinite wrapping
     const viewportWidth = wrapper.clientWidth;
     const viewportHeight = wrapper.clientHeight;
     const spectrumWidth = viewportWidth; // Width of one spectrum copy
-    const width = spectrumWidth * 3; // Total width (3 copies)
+    const numCopies = 5;
+    const width = spectrumWidth * numCopies;
     const height = viewportHeight;
 
     canvas.width = width;
@@ -272,8 +273,11 @@
     // Panning and zoom state
     let isPanning = false;
     let startX = 0;
-    let currentX = -spectrumWidth; // Start at middle copy (centered on red)
+    let startY = 0;
+    let currentX = -spectrumWidth * 2; // Start at center copy
+    let currentY = 0; // Start at top
     let translateX = currentX;
+    let translateY = currentY;
     let scale = 1.0;
     const maxScale = 3.0;
 
@@ -348,8 +352,8 @@
       };
     }
 
-    // Draw continuous color spectrum (3 copies for wrapping)
-    // Each copy shows full hue range, offset so middle copy centers on red
+    // Draw continuous color spectrum (5 copies for seamless wrapping)
+    // Each copy shows full hue range, offset so center copy shows red in middle
     function drawSpectrum() {
       const ctx = canvas.getContext('2d');
       const imageData = ctx.createImageData(width, height);
@@ -400,9 +404,9 @@
         return pos.hsl.s > 15; // Only include colors with > 15% saturation
       });
 
-      // Create points for all 3 copies of the spectrum
+      // Create points for all copies of the spectrum
       const points = [];
-      for (let copy = 0; copy < 3; copy++) {
+      for (let copy = 0; copy < numCopies; copy++) {
         saturatedColors.forEach(color => {
           const pos = positionColor(color, copy);
           points.push([pos.x, pos.y, color]);
@@ -494,6 +498,7 @@
     wrapper.addEventListener('mousedown', (e) => {
       isPanning = true;
       startX = e.clientX;
+      startY = e.clientY;
       panStartTime = Date.now();
       wrapper.classList.add('grabbing');
     });
@@ -501,21 +506,28 @@
     document.addEventListener('mousemove', (e) => {
       if (!isPanning) return;
       const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
       translateX = currentX + dx;
+      translateY = currentY + dy;
 
-      // Wrap around when panning past edges
+      // Horizontal wrapping - keep viewport centered on middle copies
       const scaledSpectrumWidth = spectrumWidth * scale;
-      if (translateX > -scaledSpectrumWidth * 0.5) {
-        // Wrapped too far right, jump to left copy
+      while (translateX > -scaledSpectrumWidth * 1.5) {
+        // Wrapped too far right, jump left
         translateX -= scaledSpectrumWidth;
         currentX -= scaledSpectrumWidth;
-        startX = e.clientX;
-      } else if (translateX < -scaledSpectrumWidth * 2.5) {
-        // Wrapped too far left, jump to right copy
+      }
+      while (translateX < -scaledSpectrumWidth * 2.5) {
+        // Wrapped too far left, jump right
         translateX += scaledSpectrumWidth;
         currentX += scaledSpectrumWidth;
-        startX = e.clientX;
       }
+
+      // Vertical clamping - prevent panning beyond canvas edges
+      const scaledHeight = height * scale;
+      const minY = Math.min(0, -(scaledHeight - viewportHeight));
+      const maxY = 0;
+      translateY = Math.max(minY, Math.min(maxY, translateY));
 
       updateViewport();
     });
@@ -524,6 +536,7 @@
       if (isPanning) {
         isPanning = false;
         currentX = translateX;
+        currentY = translateY;
         wrapper.classList.remove('grabbing');
       }
     });
@@ -541,21 +554,33 @@
         // Zoom towards mouse position
         const rect = wrapper.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
-        const zoomPoint = (mouseX - translateX) / scale;
+        const mouseY = e.clientY - rect.top;
+        const zoomPointX = (mouseX - translateX) / scale;
+        const zoomPointY = (mouseY - translateY) / scale;
 
         scale = newScale;
-        translateX = mouseX - zoomPoint * scale;
+        translateX = mouseX - zoomPointX * scale;
+        translateY = mouseY - zoomPointY * scale;
         currentX = translateX;
+        currentY = translateY;
 
-        // Wrap around after zoom if needed
+        // Horizontal wrapping after zoom
         const scaledSpectrumWidth = spectrumWidth * scale;
-        if (translateX > -scaledSpectrumWidth * 0.5) {
+        while (translateX > -scaledSpectrumWidth * 1.5) {
           translateX -= scaledSpectrumWidth;
           currentX -= scaledSpectrumWidth;
-        } else if (translateX < -scaledSpectrumWidth * 2.5) {
+        }
+        while (translateX < -scaledSpectrumWidth * 2.5) {
           translateX += scaledSpectrumWidth;
           currentX += scaledSpectrumWidth;
         }
+
+        // Vertical clamping after zoom
+        const scaledHeight = height * scale;
+        const minY = Math.min(0, -(scaledHeight - viewportHeight));
+        const maxY = 0;
+        translateY = Math.max(minY, Math.min(maxY, translateY));
+        currentY = translateY;
 
         updateViewport();
       }
@@ -563,7 +588,7 @@
 
     // Update viewport transform
     function updateViewport() {
-      viewport.style.transform = `translateX(${translateX}px) scale(${scale})`;
+      viewport.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
       viewport.style.transformOrigin = '0 0';
     }
 
